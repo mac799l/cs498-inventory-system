@@ -1,1 +1,1 @@
-# cs498-inventory-system
+# CS498 project
