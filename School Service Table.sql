@@ -38,7 +38,7 @@ CREATE TABLE `School Service` (
   `Room` varchar(10) NOT NULL,
   `Type of Service` ENUM('Pickup','Maintenance','Deliver') NOT NULL,
   `Date Requested` DATE NOT NULL,
-  `Deadline Date` DATE NOT NULL COMMENT='Some schools have deadlines we need to meet',
+  `Deadline Date` DATE NOT NULL COMMENT 'Some schools have deadlines we need to meet',
   `Condition` ENUM('Clean', 'Dirty') NOT NULL,
   `Notes` varchar(250)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Fridge Information Specific to a School';
