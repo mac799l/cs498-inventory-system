@@ -29,7 +29,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `Fridge Tracker` (
   `FID` int(15) NOT NULL,
-  `Assigned School` varchar(18) NOT NULL,
+  `Assigned School` int(4) NOT NULL,
   `Building` varchar(45) NOT NULL,
   `Location` varchar(30) NOT NULL,
   `Last Worker to Move` varchar(15) NOT NULL,
