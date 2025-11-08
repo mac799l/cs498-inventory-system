@@ -38,7 +38,8 @@ CREATE TABLE `School Service` (
   `Dorm` varchar(50) NOT NULL,
   `Room` varchar(10) NOT NULL,
   `Type of Service` ENUM('Pickup',' Maintenance' ,'Deliver') NOT NULL,
-  `Date Requested` DATE NOT NULL,
+  `Request Date` DATE NOT NULL,
+  `Service Date` DATE NOT NULL,
   `Deadline Date` DATE NOT NULL COMMENT 'Some schools have deadlines we need to meet',
   `Condition` ENUM('Clean', 'Dirty') NOT NULL,
   `Notes` varchar(250)
