@@ -28,6 +28,7 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `School Service` (
+  'SNO' int(12) NOT NULL,
   `UID` int(12) NOT NULL,
   `Username` varchar(18) NOT NULL,
   `Email` varchar(45) NOT NULL,
