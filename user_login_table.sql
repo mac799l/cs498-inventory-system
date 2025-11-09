@@ -33,6 +33,8 @@ CREATE TABLE `user login table` (
   `Phone Number` varchar(14) NOT NULL,
   `UID` int(12) NOT NULL,
   `School ID` int(4) NOT NULL,
+  `Dorm` varchar(50) NOT NULL,
+  `Room` varchar(10) NOT NULL,
   `Role` varchar(8) CHECK (`Role` IN ('Worker', 'Student', 'Liaison', 'Campus Housing')),
   `Hash` int(35) NOT NULL COMMENT 'Hash of Users Password'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Login Table to verify User Information';
