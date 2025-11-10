@@ -28,16 +28,11 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `School Service` (
+  `SNO` int(12) NOT NULL,
   `UID` int(12) NOT NULL,
-  `Username` varchar(18) NOT NULL,
-  `Email` varchar(45) NOT NULL,
-  `Phone Number` varchar(14) NOT NULL,
-  `First Name` varchar(15) NOT NULL,
-  `Last Name` varchar(30) NOT NULL,
-  `Dorm` varchar(50) NOT NULL,
-  `Room` varchar(10) NOT NULL,
-  `Type of Service` ENUM('Pickup','Maintenance','Deliver') NOT NULL,
-  `Date Requested` DATE NOT NULL,
+  `Type of Service` ENUM('Pickup',' Maintenance' ,'Deliver') NOT NULL,
+  `Request Date` DATE NOT NULL,
+  `Service Date` DATE NOT NULL,
   `Deadline Date` DATE NOT NULL COMMENT 'Some schools have deadlines we need to meet',
   `Condition` ENUM('Clean', 'Dirty') NOT NULL,
   `Notes` varchar(250)
