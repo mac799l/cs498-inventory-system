@@ -28,8 +28,9 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `user login table` (
-  `Username` varchar(18) NOT NULL,
-  `Email` varchar(45) NOT NULL,
+  `First Name` varchar(25) NOT NULL,
+  `Last Name` varchar(25)
+  `Email` varchar(60) NOT NULL,
   `Phone Number` varchar(14) NOT NULL,
   `UID` int(12) NOT NULL,
   `School ID` int(4) NOT NULL,
