@@ -32,7 +32,7 @@ CREATE TABLE `user login table` (
   `Last Name` varchar(25),
   `Email` varchar(60) NOT NULL,
   `Phone Number` varchar(14) NOT NULL,
-  `UID` int(12) UNIQUE NOT NULL,
+  `UID` int(12) UNIQUE AUTO_INCREMENT NOT NULL,
   `School ID` int(4) NULL,
   `Dorm` varchar(50) NULL,
   `Room` varchar(10) NULL,
