@@ -73,11 +73,58 @@ app.get('/api/user/:id', (req, res) => {
 // Update user attributes.
 app.put('api/put/user/:id', (req, res) => {
   const { uid } = req.params.id;
-  const { username, email, phone, school_id, dorm, room } = req.body;
-  db.query('UPDATE "user login table" SET Username = (username), Email = (email), "Phone Number" = (phone), "School ID"=(school_id), Dorm=(dorm), Room=(room) WHERE uid = (uid)',
-     [username, email, phone, school_id, dorm, room, uid], (err, rows) =>{
-    if (err) return res.status(500).json({error: err});
-  });
+  const {
+    first_name,
+    last_name,
+    email,
+    phone,
+    school_id,
+    dorm,
+    room,
+    role
+  } = req.body;
+
+    const db_query = `INSERT INTO \`user login table\` 
+    (\`First Name\`, \`Last Name\`, Email, \`Phone Number\`, UID, 
+    \`School ID\`, Dorm, Room, Role, Hash) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    // Check for null values.
+    if (!uid || !first_name || !email || !phone) {
+      return res.status(400).json({
+        error: 'Missing one or more required fields: UID, First Name, Email, Phone Number'
+    });
+    }
+
+    // Generate random UID.
+    max = 4095;
+    min = 0;
+    uid = Math.floor(Math.random() * (max - min + 1)) + min;
+
+    const values = [
+      first_name,
+      last_name,
+      email,
+      phone,
+      uid,
+      school_id,
+      dorm,
+      room,
+      role,
+      hash
+    ]
+
+
+    db.query(db_query, values, (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          error: "Database update failed",
+          details: err.message });
+      }
+      res.status(200).json({
+        message: "User updated inserted successfully."
+      });
+    });
 });
 
 // Update request information.
@@ -117,7 +164,7 @@ app.post('api/insert/service', (req, res) => {
     // Check for null values.
     if (!uid || !sno || !service_type || !service_date) {
       return res.status(400).json({
-        error: 'Missing required fields: uid, sno, service_type, service_date'
+        error: 'Missing one or more required fields: UID, SNO, Type of Service, Service Date'
     });
     }
 
