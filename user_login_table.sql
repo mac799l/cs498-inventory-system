@@ -37,7 +37,7 @@ CREATE TABLE `user login table` (
   `Dorm` varchar(50) NULL,
   `Room` varchar(10) NULL,
   `Role` varchar(20) CHECK (`Role` IN ('Worker', 'Student', 'Liaison', 'Campus Housing')),
-  `Hash` int(35) NOT NULL COMMENT 'Hash of Users Password'
+  `Hash` varchar(60) NOT NULL COMMENT 'Hash of Users Password'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Login Table to verify User Information';
 COMMIT;
 
