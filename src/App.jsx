@@ -97,6 +97,7 @@ function Signup({ color, description } ) {
 const c = colorMap[color] || colorMap.blue;
  
 return (
+  <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
   <div className="px-6 py-10 sm:pl-12">
     <h2 className={`text-3xl font-bold ${c.text} mb-4`}>Sign Up</h2>
     <p className="text-gray-600 max-w-2xl mb-4">{description}</p>
@@ -195,10 +196,11 @@ return (
     <button
       type="submit"
       onClick={handleSubmission}
-      className={`ml-4 px-5 py-2 text-white font-semibold rounded-lg shadow-md transition ${c.bg} ${c.hover}`}
+      className={`ml-4 px-5 py-2 !text-white !font-semibold !rounded-lg !shadow-md !transition !${c.bg} !${c.hover}`}
     >
       Sign Up
     </button>
+  </div>
   </div>
   )
 }
@@ -283,266 +285,263 @@ function SignInPage({ title, color, description, dashboardPath }) {
 }
 
 function StudentDashboard() {
-  const [showForm, setShowForm] = useState(false);
-  const [formType, setFormType] = useState("");
-  const [formData, setFormData] = useState({
-    requestDate: "",
-    serviceDate: "",
-    deadlineDate: "",
-    condition: "Clean",
-    preferredTimes: "",
-    notes: "",
-  });
+  const [activeForm, setActiveForm] = useState(null);
+  const [serviceDate, setServiceDate] = useState("");
+  const [deadlineDate, setDeadlineDate] = useState("");
+  const [condition, setCondition] = useState("Clean");
+  const [preferredTimes, setPreferredTimes] = useState({});
+  const [notes, setNotes] = useState("");
 
-  // Set requestDate to today's date automatically
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setFormData((prev) => ({ ...prev, requestDate: today }));
-  }, []);
-
-  const resetForm = () => {
-    const today = new Date().toISOString().split("T")[0];
-    setFormData({
-      requestDate: today,
-      serviceDate: "",
-      deadlineDate: "",
-      condition: "Clean",
-      preferredTimes: "",
-      notes: "",
-    });
-  };
-
-  const handleOpenForm = (type) => {
-    setFormType(type);
-    setShowForm(true);
+  const handleCancel = () => {
+    setActiveForm(null);
     resetForm();
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const resetForm = () => {
+    setServiceDate("");
+    setDeadlineDate("");
+    setCondition("Clean");
+    setPreferredTimes({});
+    setNotes("");
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const payload = {
-      typeOfService: formType,
-      requestDate: formData.requestDate,
-      serviceDate: formData.serviceDate,
-      deadlineDate: formData.deadlineDate || null,
-      condition: formData.condition,
-      preferredTimes: formData.preferredTimes
-        ? formData.preferredTimes.split(",").map((t) => t.trim())
-        : [],
-      notes: formData.notes,
+    const formattedTimes = {};
+    for (const [day, info] of Object.entries(preferredTimes)) {
+      if (info.selected) {
+        formattedTimes[day] = [info.start || "", info.end || ""];
+      }
+    }
+
+    const requestData = {
+      typeOfService: activeForm,
+      requestDate: new Date().toISOString().split("T")[0], // current date
+      serviceDate,
+      deadlineDate,
+      condition,
+      preferredTimes: JSON.stringify(formattedTimes),
+      notes,
     };
 
-    console.log("Submitted:", payload);
-    alert(`${formType} request submitted!`);
-
+    console.log("Submitting request:", requestData);
+    alert(`Request for ${activeForm} submitted successfully!`);
     resetForm();
-    setShowForm(false);
-  };
-
-  const handleCancel = () => {
-    resetForm();
-    setShowForm(false);
+    setActiveForm(null);
   };
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-[80vh] px-6 py-10">
-      <div className="w-full max-w-4xl text-center">
-        <h2 className="text-4xl font-bold text-blue-700 mb-6">
-          Student Dashboard
-        </h2>
-        <p className="text-gray-600 mb-8">
-          Submit a request for your housing services below.
-        </p>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+      <h1 className="text-3xl font-bold mb-8 text-blue-800">Student Dashboard</h1>
 
-        {/* Show cards only when form is NOT open */}
-        {!showForm && (
-          <div className="grid gap-6 md:grid-cols-3 mb-10">
-            {/* Pickup Card */}
-            <div className="p-6 bg-white rounded-xl shadow-md border hover:shadow-lg transition">
-              <h3 className="text-2xl font-semibold text-blue-700 mb-2">
-                Request Pickup
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Schedule a pickup for your fridge or other housing items.
-              </p>
-              <button
-                onClick={() => handleOpenForm("Pickup")}
-                className="px-5 py-2 !bg-blue-600 !text-white !rounded-lg font-semibold !hover:bg-blue-700 transition"
-              >
-                Request Pickup
-              </button>
+      {/* Grid of Service Options */}
+      {!activeForm && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-5xl">
+          {[
+            { name: "Pickup", icon: "📦", description: "Request a pickup service." },
+            { name: "Maintenance", icon: "🛠️", description: "Request maintenance or repair." },
+            { name: "Delivery", icon: "🚚", description: "Request a delivery service." },
+          ].map((service) => (
+            <div
+              key={service.name}
+              onClick={() => setActiveForm(service.name)}
+              className="cursor-pointer bg-white hover:bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-md transition transform hover:-translate-y-1"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="text-5xl mb-4">{service.icon}</div>
+                <h3 className="text-xl font-semibold text-blue-700 mb-2">
+                  {service.name}
+                </h3>
+                <p className="text-gray-600">{service.description}</p>
+              </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Maintenance Card */}
-            <div className="p-6 bg-white rounded-xl shadow-md border hover:shadow-lg transition">
-              <h3 className="text-2xl font-semibold text-blue-700 mb-2">
-                Request Maintenance
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Report issues with your fridge or housing equipment.
-              </p>
-              <button
-                onClick={() => handleOpenForm("Maintenance")}
-                className="px-5 py-2 !bg-blue-600 !text-white !rounded-lg font-semibold !hover:bg-blue-700 transition"
-              >
-                Request Maintenance
-              </button>
-            </div>
+      {/* Request Form */}
+      {activeForm && (
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-2xl bg-white mt-8 p-6 rounded-2xl shadow-lg space-y-4"
+        >
+          <h2 className="text-2xl font-semibold text-blue-700 mb-4">
+            {activeForm} Request Form
+          </h2>
 
-            {/* Delivery Card */}
-            <div className="p-6 bg-white rounded-xl shadow-md border hover:shadow-lg transition">
-              <h3 className="text-2xl font-semibold text-blue-700 mb-2">
-                Request Delivery
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Schedule delivery of your assigned fridge or housing item.
-              </p>
-              <button
-                onClick={() => handleOpenForm("Delivery")}
-                className="px-5 py-2 !bg-blue-600 !text-white !rounded-lg font-semibold !hover:bg-blue-700 transition"
-              >
-                Request Delivery
-              </button>
+          {/* Type of Service */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Type of Service
+            </label>
+            <input
+              type="text"
+              value={activeForm}
+              readOnly
+              className="w-full border rounded px-3 py-2 bg-gray-100"
+            />
+          </div>
+
+          {/* Request Date (auto-filled) */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Request Date
+            </label>
+            <input
+              type="date"
+              value={new Date().toISOString().split("T")[0]}
+              readOnly
+              className="w-full border rounded px-3 py-2 bg-gray-100"
+            />
+          </div>
+
+          {/* Service Date */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Service Date
+            </label>
+            <input
+              type="date"
+              value={serviceDate}
+              onChange={(e) => setServiceDate(e.target.value)}
+              required
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
+
+          {/* Deadline Date */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Deadline Date (optional)
+            </label>
+            <input
+              type="date"
+              value={deadlineDate}
+              onChange={(e) => setDeadlineDate(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
+
+          {/* Condition */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Condition
+            </label>
+            <select
+              value={condition}
+              onChange={(e) => setCondition(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+            >
+              <option value="Clean">Clean</option>
+              <option value="Dirty">Dirty</option>
+            </select>
+          </div>
+
+          {/* Preferred Times */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Preferred Times
+            </label>
+            <div className="p-4 bg-gray-50 rounded-lg shadow-inner space-y-2">
+              {[
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ].map((day) => (
+                <div key={day} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={day}
+                    checked={preferredTimes[day]?.selected || false}
+                    onChange={(e) =>
+                      setPreferredTimes({
+                        ...preferredTimes,
+                        [day]: {
+                          ...preferredTimes[day],
+                          selected: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                  <label htmlFor={day} className="w-24">
+                    {day}
+                  </label>
+
+                  {preferredTimes[day]?.selected && (
+                    <div className="flex space-x-2">
+                      <input
+                        type="time"
+                        value={preferredTimes[day]?.start || ""}
+                        onChange={(e) =>
+                          setPreferredTimes({
+                            ...preferredTimes,
+                            [day]: {
+                              ...preferredTimes[day],
+                              start: e.target.value,
+                            },
+                          })
+                        }
+                        className="border rounded px-2 py-1"
+                      />
+                      <span>to</span>
+                      <input
+                        type="time"
+                        value={preferredTimes[day]?.end || ""}
+                        onChange={(e) =>
+                          setPreferredTimes({
+                            ...preferredTimes,
+                            [day]: {
+                              ...preferredTimes[day],
+                              end: e.target.value,
+                            },
+                          })
+                        }
+                        className="border rounded px-2 py-1"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* Show form only when a service is selected */}
-        {showForm && (
-          <div className="bg-white shadow-lg rounded-2xl p-6 mt-6 text-left">
-            <h3 className="text-2xl font-semibold text-blue-700 mb-4">
-              {formType} Request Form
-            </h3>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Type of Service */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Type of Service
-                </label>
-                <input
-                  type="text"
-                  value={formType}
-                  readOnly
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
-                />
-              </div>
-
-              {/* Request Date - made to be current day */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Request Date
-                </label>
-                <input
-                  type="date"
-                  name="requestDate"
-                  value={formData.requestDate}
-                  readOnly
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
-                />
-              </div>
-
-              {/* Service Date */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Service Date
-                </label>
-                <input
-                  type="date"
-                  name="serviceDate"
-                  value={formData.serviceDate}
-                  onChange={handleChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              {/* Deadline Date */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Deadline Date (optional)
-                </label>
-                <input
-                  type="date"
-                  name="deadlineDate"
-                  value={formData.deadlineDate}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              {/* Condition */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Condition
-                </label>
-                <select
-                  name="condition"
-                  value={formData.condition}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                >
-                  <option value="Clean">Clean</option>
-                  <option value="Dirty">Dirty</option>
-                </select>
-              </div>
-
-              {/* Preferred Times */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Preferred Times
-                </label>
-                <input
-                  type="text"
-                  name="preferredTimes"
-                  value={formData.preferredTimes}
-                  onChange={handleChange}
-                  placeholder="e.g., 9AM-11AM, 1PM-3PM"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  maxLength={250}
-                  placeholder="Additional notes (max 250 characters)"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-between pt-4">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-5 py-2 rounded-lg !bg-gray-200 !text-gray-700 font-semibold !hover:bg-gray-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-lg !bg-blue-600 !text-white font-semibold !hover:bg-blue-700 transition"
-                >
-                  Submit Request
-                </button>
-              </div>
-            </form>
+          {/* Notes */}
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={250}
+              className="w-full border rounded px-3 py-2"
+              placeholder="Any additional details..."
+            />
           </div>
-        )}
-      </div>
+
+          {/* Buttons */}
+          <div className="flex justify-between pt-4">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-4 py-2 !bg-gray-300 !hover:bg-gray-400 !rounded-lg !font-semibold transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 !bg-blue-600 !text-white !hover:bg-blue-700 !rounded-lg !font-semibold transition"
+            >
+              Submit Request
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
@@ -750,6 +749,15 @@ function App() {
           <Route
             path="/campusHousing/dashboard"
             element={<CampusHousingDashboard />}
+          />
+          <Route
+            path="/signup"
+            element={
+              <Signup
+                color="blue"
+                description="Create your account by filling out the form below."
+              />
+            }
           />
         </Routes>
       </main>
