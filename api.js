@@ -39,7 +39,7 @@ app.get('api/service', (req, res) => {
 
 // Get all jobs of given type.
 app.get('api/service/:type', (req, res) => {
-    const {type} = req.params.type;
+    const {type} = req.params;
 	db.query('SELECT * FROM "School Service" WHERE "Type of Service" = (type)', [type], (err, rows) => {
 		if (err) return res.status(500).json({error: err});
 		res.json(rows);
@@ -58,8 +58,8 @@ app.get('/api/users', (req, res) => {
 
 // Get user info by id.
 app.get('/api/user/:id', (req, res) => {
-  const {id} = req.params.id;
-  db.query('SELECT * FROM "user login table" WHERE UID = (id)', [id], (err, rows) => {
+  const {id} = req.params;
+  db.query('SELECT * FROM "user login table" WHERE UID = ?', [id], (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
   });
@@ -87,16 +87,9 @@ app.put('api/put/user/:id', (req, res) => {
   const db_query = `
     UPDATE \`user login table\`
     SET 
-    \`First Name\` = ?,
-    \`Last Name\` = ?,
-    Email = ?,
-    \`Phone Number\` = ?,
-    \`School ID\` = ?,
-    Dorm = ?,
-    Room = ?,
-    Role = ?,
-    Hash = ?
-  WHERE UID = ?
+    \`First Name\` = ?, \`Last Name\` = ?, Email = ?, \`Phone Number\` = ?, \`School ID\` = ?,
+    Dorm = ?, Room = ?, Role = ?, Hash = ?
+    WHERE UID = ?
   `;
     // Check for null values.
   if (!uid || !first_name || !email || !phone) {
