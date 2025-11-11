@@ -28,13 +28,15 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `School Service` (
-  `SNO` int(12) NOT NULL,
+  `SID` int(10) NOT NULL COMMENT 'SERVICE ID',
+  `SNO` int(4) NOT NULL COMMENT 'School Number',
   `UID` int(12) NOT NULL,
-  `Type of Service` ENUM('Pickup',' Maintenance' ,'Deliver') NOT NULL,
+  `Type of Service` ENUM('Pickup','Maintenance' ,'Delivery') NOT NULL,
   `Request Date` DATE NOT NULL,
   `Service Date` DATE NOT NULL,
-  `Deadline Date` DATE NOT NULL COMMENT 'Some schools have deadlines we need to meet',
+  `Deadline Date` DATE NULL COMMENT 'Some schools have deadlines we need to meet',
   `Condition` ENUM('Clean', 'Dirty') NOT NULL,
+  `Preferred Times` JSON NULL COMMENT 'The times the student would prefer',
   `Notes` varchar(250)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Fridge Information Specific to a School';
 COMMIT;
