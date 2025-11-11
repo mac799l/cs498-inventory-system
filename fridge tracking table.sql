@@ -27,18 +27,17 @@ SET time_zone = "+00:00";
 -- Table structure for table `Fridge Tracker`
 --
 
-CREATE TABLE `Fridge Tracker` (
-  `FID` int(15) NOT NULL,
-  `Assigned School` int(4) NOT NULL,
-  `Building` varchar(45) NOT NULL,
-  `Location` varchar(30) NOT NULL,
-  `Last Worker to Move` varchar(15) NOT NULL,
-  `Date Moved` DATE NOT NULL,
-  `Dorm` varchar(50) NOT NULL,
-  `Condition` ENUM('Clean', 'Dirty') NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores the information of where fridges should be found';
+CREATE TABLE `Fridge_Tracker` (
+  `FID` INT NOT NULL COMMENT'ID of Fridge',
+  `Prev` INT NULL COMMENT 'Last Person to use the fridge',
+  `School` INT NULL COMMENT'The school id it was last assigned to (can be null for new fridges)',
+  `Location` VARCHAR(30) NOT NULL COMMENT'The building it is currently in',
+  `Moved` DATE NULL COMMENT'When it was moved to the location',
+  `Dorm` VARCHAR(50) NULL COMMENT 'If in Dorm what Dorm is it',
+  `Room` VARCHAR(5) NULL COMMENT 'The Room number',
+  `Condition` ENUM('Clean','Dirty') NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT'Stores the information of where fridges should be found ** Can add this to table later on ^Last Worker to Move` varchar(15) NOT NULL^';
 COMMIT;
-
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

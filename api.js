@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
+const bcrypt = require('bcrypt');
 const { cpuUsage } = require('process');
 
 const app = express();
@@ -150,17 +151,32 @@ app.post('api/insert/service', (req, res) => {
         SNO: sno,
         insertID: result.insertID
       });
+    });
 });
 
 // Insert a new user.
-app.post('api/insert/user', (req, res) => {
-    const { username, email, phone, school_id, dorm, room, role } = req.body;
-    db.query('INSERT INTO users VALUES ((username), (email), (phone), (school_id), (dorm), (room), (role))', 
-        [username, email, phone, school_id, dorm, room, role], (err, rows) =>{
-            if (err) return res.status(500).json({error: err});
-        });
-});
+app.post('/api/insert/user', async (req, res) => {
+  const { firstname, lastname, password, email, phone, school_id, dorm, room, role } = req.body;
+  const saltRounds = 10;
 
+  try {
+    const hash = await bcrypt.hash(password, saltRounds);
+
+    const query = 
+    `INSERT INTO \`user login table\` 
+    (\`First Name\`, \`Last Name\`, \`Email\`, \`Phone Number\`, \`School ID\`, \`Dorm\`, \`Room\`, \`Role\`, \`Hash\`) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    db.query(query, [firstname, lastname, email, phone, school_id, dorm, room, role, hash], (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: err });
+      }
+      res.status(200).json({ success: true, userId: uid });
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Hashing failed', details: err });
+  }
+});
 
 // Get current date in SQL DATE format.
 function sqlDate(){
@@ -172,6 +188,5 @@ function sqlDate(){
   const formattedDate = '${year}-${month}-${day}';
   return formattedDate;
 }
-
 
 app.listen(5000, () => console.log('Server running on port 5000'));
