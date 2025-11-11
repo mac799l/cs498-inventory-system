@@ -32,7 +32,7 @@ CREATE TABLE `Fridge_Tracker` (
   `Prev` INT NULL COMMENT 'Last Person to use the fridge',
   `School` INT NULL COMMENT'The school id it was last assigned to (can be null for new fridges)',
   `Location` VARCHAR(30) NOT NULL COMMENT'The building it is currently in',
-  `Moved` DATE NULL COMMENT'When it was moved to the location',
+  `Moved` DATE NOT NULL DEFAULT CURRENT_DATE COMMENT'When it was moved to the location',
   `Dorm` VARCHAR(50) NULL COMMENT 'If in Dorm what Dorm is it',
   `Room` VARCHAR(5) NULL COMMENT 'The Room number',
   `Status` ENUM('Clean','Dirty') NULL
