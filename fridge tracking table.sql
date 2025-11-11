@@ -29,13 +29,13 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `Fridge Tracker` (
   `FID` int(15) NOT NULL, --ID of Fridge
-  `Last/Current Owner` int(12) NULL, --Last Person to use the fridge
-  `Assigned School` int(4)  NULL, --The school id it was last assigned to (can be null for new fridges)
+  `Prev` int(12) NULL, --Last Person to use the fridge
+  `School` int(4)  NULL, --The school id it was last assigned to (can be null for new fridges)
   `Location` varchar(30) NOT NULL, --The building it is currently in
  -- `Last Worker to Move` varchar(15) NOT NULL,
-  `Date Moved` DATE  NULL, --When it was moved to the location
+  `Moved` DATE  NULL, --When it was moved to the location
   `Dorm` varchar(50)  NULL, --If in Dorm what Dorm is it
-  `Dorm Room` varchar(5) NULL,
+  `Room` varchar(5) NULL, --The Room number
   `Condition` ENUM('Clean', 'Dirty')  NULL 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores the information of where fridges should be found';
 COMMIT;
