@@ -84,47 +84,51 @@ app.put('api/put/user/:id', (req, res) => {
     role
   } = req.body;
 
-    const db_query = `INSERT INTO \`user login table\` 
-    (\`First Name\`, \`Last Name\`, Email, \`Phone Number\`, UID, 
-    \`School ID\`, Dorm, Room, Role, Hash) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+  const db_query = `
+    UPDATE \`user login table\`
+    SET 
+    \`First Name\` = ?,
+    \`Last Name\` = ?,
+    Email = ?,
+    \`Phone Number\` = ?,
+    \`School ID\` = ?,
+    Dorm = ?,
+    Room = ?,
+    Role = ?,
+    Hash = ?
+  WHERE UID = ?
+  `;
     // Check for null values.
-    if (!uid || !first_name || !email || !phone) {
-      return res.status(400).json({
+  if (!uid || !first_name || !email || !phone) {
+    return res.status(400).json({
         error: 'Missing one or more required fields: UID, First Name, Email, Phone Number'
     });
+  }
+
+  const values = [
+    first_name,
+    last_name,
+    email,
+    phone,
+    school_id,
+    dorm,
+    room,
+    role,
+    hash,
+    uid
+  ]
+
+
+  db.query(db_query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        error: "Database update failed",
+        details: err.message });
     }
-
-    // Generate random UID.
-    max = 4095;
-    min = 0;
-    uid = Math.floor(Math.random() * (max - min + 1)) + min;
-
-    const values = [
-      first_name,
-      last_name,
-      email,
-      phone,
-      uid,
-      school_id,
-      dorm,
-      room,
-      role,
-      hash
-    ]
-
-
-    db.query(db_query, values, (err, result) => {
-      if (err) {
-        return res.status(500).json({
-          error: "Database update failed",
-          details: err.message });
-      }
-      res.status(200).json({
-        message: "User updated inserted successfully."
-      });
+    res.status(200).json({
+      message: "User updated inserted successfully."
     });
+  });
 });
 
 // Update request information.
