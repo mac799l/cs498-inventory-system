@@ -44,7 +44,6 @@ function Signup({ color, description } ) {
   const [roomnum, setRoomNum] = useState(null);
  
   async function handleSubmission(event) {
-    console.log(role);
  
     const data = {
       firstname: firstname,
@@ -70,7 +69,6 @@ function Signup({ color, description } ) {
       .catch((error) => console.error("Error:", error));
   }
  
-  // Color map - Tailwind
   const colorMap = {
     blue: {
       text: "text-blue-700",
@@ -101,6 +99,8 @@ return (
   <div className="px-6 py-10 sm:pl-12">
     <h2 className={`text-3xl font-bold ${c.text} mb-4`}>Sign Up</h2>
     <p className="text-gray-600 max-w-2xl mb-4">{description}</p>
+
+    <form>
  
     <label className="block mb-2 font-medium">Select your role:</label>
     <select
@@ -200,6 +200,9 @@ return (
     >
       Sign Up
     </button>
+
+    </form>
+
   </div>
   </div>
   )
@@ -210,6 +213,7 @@ function SignInPage({ title, color, description, dashboardPath }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loggedin, setLoggedIn] = useState(true);
 
   const colorMap = {
     blue: { text: "text-blue-700", bg: "bg-blue-600", hover: "hover:bg-blue-700" },
@@ -220,18 +224,6 @@ function SignInPage({ title, color, description, dashboardPath }) {
 
   const c = colorMap[color] || colorMap.blue;
 
-  /*
-  const handleSignIn = () => {
-  // Basic mock logic for redirecting based on username
-  const user = username.toLowerCase();
-
-  if (user === "s") navigate("/student/dashboard");
-  else if (user === "w") navigate("/worker/dashboard");
-  else if (user === "l") navigate("/liaison/dashboard");
-  else if (user === "c") navigate("/campusHousing/dashboard");
-  else alert("Unknown username.");
-  };
-  */
   async function handleSignIn() {
  
     try {
@@ -254,6 +246,7 @@ function SignInPage({ title, color, description, dashboardPath }) {
     else alert("Unknown username.");
   } catch (error) {
     console.error("Error:", error);
+    setLoggedIn(false);
   }
 }
 
@@ -298,6 +291,18 @@ function SignInPage({ title, color, description, dashboardPath }) {
         />
         <br />
         <br />
+
+        <div>
+          {loggedin ? (
+            <text style={{display:'none'}}>Invalid email or password. Try again.</text>
+          ) : (
+            <>
+            <text style={{color: 'red'}}>Invalid email or password. Try again.</text>
+            <br />
+            <br />
+            </>
+          )}
+        </div>
 
         <button
           type="submit"
