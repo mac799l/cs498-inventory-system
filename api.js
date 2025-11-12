@@ -208,81 +208,99 @@ app.put('/api/put/service/:sid', (req, res) => {
 
 // Insert a new request.
 app.post('/api/insert/request', (req, res) => {
-
-    //const current_date = sqlDate();
     const {
-      uid,
-      sno,
-      service_type,
-      request_date,
-      service_date,
-      deadline_date = null,
-      condition = 0,
-      preferred_times = null,
-      notes,
+        uid,
+        sno,
+        service_type,
+        request_date,
+        service_date,
+        deadline_date = null,
+        condition = 0,
+        preferred_times = null,
+        notes
     } = req.body;
 
     console.log(req.body);
-    // Check that the user has a fridge to service.
-    if (service_type != "Delivery"){
-      db.query(`SELECT * FROM Fridge_Tracker WHERE Owner = ?`, [uid], (err, result) => {
-       if (err) {
-          return res.status(500).json({
-            error: "Error when checking inventory.",
-            details: err.message });
-        }
-       if (!result){
-          return res.status(404).json({
-            error: "User has no fridge to service.",
-          })
-        };
-      });
-    };
 
-
-    const db_query = `INSERT INTO \`School Service\` 
-    (\`SID\`, \`SNO\`, \`UID\`, \`Type of Service\`, \`Request Date\`, \`Service Date\`, \`Deadline Date\`, \`Condition\`, \`Preferred Times\`, \`Notes\`) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    // Check for null values.
+    // Validate required fields first
     if (!uid || !sno || !service_type || !service_date) {
-      return res.status(400).json({
-        error: 'Missing one or more required fields: UID, SNO, Type of Service, Service Date'
-    });
+        return res.status(400).json({
+            error: 'Missing one or more required fields: UID, SNO, Type of Service, Service Date'
+        });
     }
 
-    // Generate random SID.
-    max = 1023;
-    min = 0;
-    sid = Math.floor(Math.random() * (max - min + 1)) + min;
+    // Only check fridge ownership if not Delivery
+    if (service_type !== "Delivery") {
+        db.query(
+            `SELECT 1 FROM \`Fridge_Tracker\` WHERE \`Owner\` = ? LIMIT 1`,
+            [uid],
+            (err, results) => {
+                if (err) {
+                    console.error("Database error during fridge check:", err);
+                    return res.status(500).json({
+                        error: "Error when checking fridge ownership.",
+                        details: err.message
+                    });
+                }
 
-    const values = [
-      sid,
-      sno,
-      uid,
-      service_type,
-      request_date,
-      service_date,
-      deadline_date,
-      condition,
-      preferred_times,
-      notes
-    ]
+                if (!results || results.length === 0) {
+                    return res.status(404).json({
+                        error: "User has no fridge to service.",
+                        message: "You must have a fridge to request this service."
+                    });
+                }
 
-    console.log(preferred_times)
-    db.query(db_query, values, (err, result) => {
-      if (err) {
-        return res.status(500).json({
-          error: "Database insertion failed",
-          details: err.message });
-      }
-      res.status(201).json({
-        message: "Service request inserted successfully.",
-        SID: sid,
-        SNO: sno,
-        insertID: result.insertID
-      });
-    });
+                // The user has a fridge. Add request.
+                completeRequestInsertion();
+            }
+        );
+    } else {
+        // For deliveries, the user does not need to have a fridge.
+        completeRequestInsertion();
+    }
+
+    // Extract insertion logic to avoid duplication
+    function completeRequestInsertion() {
+        // Generate random SID (0–1023)
+        const sid = Math.floor(Math.random() * 1024); // 0 to 1023
+
+        const db_query = `
+            INSERT INTO \`School Service\`
+            (\`SID\`, \`SNO\`, \`UID\`, \`Type of Service\`, \`Request Date\`, \`Service Date\`, 
+             \`Deadline Date\`, \`Condition\`, \`Preferred Times\`, \`Notes\`)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [
+            sid,
+            sno,
+            uid,
+            service_type,
+            request_date,
+            service_date,
+            deadline_date,
+            condition,
+            preferred_times,
+            notes
+        ];
+
+        db.query(db_query, values, (err, result) => {
+            if (err) {
+                console.error("Insertion error:", err);
+                return res.status(500).json({
+                    error: "Database insertion failed",
+                    details: err.message
+                });
+            }
+
+            res.status(201).json({
+                message: "Service request inserted successfully.",
+                SID: sid,
+                SNO: sno,
+                insertId: result.insertId
+            });
+        });
+    }
 });
 
 // Insert a new user.

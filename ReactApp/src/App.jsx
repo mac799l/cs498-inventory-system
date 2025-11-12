@@ -364,8 +364,8 @@ const handleSubmit = (e) => {
   }
 
   const requestData = {
-    uid: 1,
-    sno: 1,
+    uid: user["UID"],
+    sno: user["School ID"],
     service_type: activeForm,
     request_date: new Date().toISOString().split("T")[0],
     service_date: serviceDate,
@@ -374,6 +374,8 @@ const handleSubmit = (e) => {
     preferred_times: JSON.stringify(formattedTimes),
     notes,
   };
+
+  console.log("Submitting request:", requestData);
 
   fetch("http://localhost:5000/api/insert/request", {
     method: "POST",
@@ -402,13 +404,13 @@ const handleSubmit = (e) => {
     })
     .then((data) => {
       console.log("Success:", data);
+      alert(`Request for ${activeForm} submitted.`);
     })
     .catch((error) => {
       console.error("Fetch error:", error);
+      alert(`Request for ${activeForm} failed, please try again.`);
     });
 
-    console.log("Submitting request:", requestData);
-    alert(`Request for ${activeForm} submitted successfully!`);
     resetForm();
     setActiveForm(null);
 };
