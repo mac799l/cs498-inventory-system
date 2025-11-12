@@ -198,6 +198,23 @@ app.post('api/insert/service', (req, res) => {
       notes,
     } = req.body;
 
+    // Check that the user has a fridge to service.
+    if (service_type != 2){
+      db.query(`SELECT * FROM Fridge_Tracker WHERE Owner = ?`, [uid], (err, result) => {
+        if (err) {
+          return res.status(500).json({
+            error: "Error when checking inventory.",
+            details: err.message });
+        }
+        if (!result){
+          return res.status(404).json({
+            error: "User has no fridge to service.",
+          })
+        }
+      });
+    }
+
+
     const db_query = `INSERT INTO \`School Service\` 
     (SID, SNO, UID, \`Type of Service\`, \`Request Date\`, \`Service Date\`, \`Deadline Date\`, Condition, \`Preferred Times\`, Notes) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
