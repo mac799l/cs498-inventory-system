@@ -33,10 +33,14 @@ CREATE TABLE `Fridge_Tracker` (
   `School` INT NULL COMMENT'The school id it was last assigned to (can be null for new fridges)',
   `Location` VARCHAR(30) NOT NULL COMMENT'The building it is currently in',
   `Moved` DATE NOT NULL DEFAULT CURRENT_DATE COMMENT'When it was moved to the location',
-  `Dorm` VARCHAR(50) NULL COMMENT 'If in Dorm what Dorm is it',
   `Room` VARCHAR(5) NULL COMMENT 'The Room number',
   `Status` ENUM('Clean','Dirty') NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT'Stores the information of where fridges should be found ** Can add this to table later on ^Last Worker to Move` varchar(15) NOT NULL^';
+COMMIT;
+INSERT INTO `Fridge_Tracker`
+(`Owner`, `School`, `Location`, `Moved`, `Room`, `Status`)
+VALUES
+(1, 1001, 'Woodland Glen 4', '2025-10-01', 231, 'Clean');
 COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
