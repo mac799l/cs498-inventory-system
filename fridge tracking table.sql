@@ -29,7 +29,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `Fridge_Tracker` (
   `FID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT'ID of Fridge',
-  `Prev` INT NULL COMMENT 'Last Person to use the fridge/Current User',
+  `Owner` INT NULL COMMENT 'Current Owner of Fridge, can be null if in storage',
   `School` INT NULL COMMENT'The school id it was last assigned to (can be null for new fridges)',
   `Location` VARCHAR(30) NOT NULL COMMENT'The building it is currently in',
   `Moved` DATE NOT NULL DEFAULT CURRENT_DATE COMMENT'When it was moved to the location',
