@@ -208,7 +208,7 @@ return (
 // Sign-in page
 function SignInPage({ title, color, description, dashboardPath }) {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const colorMap = {
@@ -220,6 +220,7 @@ function SignInPage({ title, color, description, dashboardPath }) {
 
   const c = colorMap[color] || colorMap.blue;
 
+  /*
   const handleSignIn = () => {
   // Basic mock logic for redirecting based on username
   const user = username.toLowerCase();
@@ -230,34 +231,33 @@ function SignInPage({ title, color, description, dashboardPath }) {
   else if (user === "c") navigate("/campusHousing/dashboard");
   else alert("Unknown username.");
   };
-
-  async function handle() {
+  */
+  async function handleSignIn() {
  
-    const data = {
-      firstname: firstname,
-      lastname: lastname,
-      password: password, //used for hash
-      email: email,
-      phone: phone,
-      role: role,
-      school_id : schoolID,
-      dorm: dorm,
-      room: roomnum
-    }
- 
-    await fetch("http://localhost:5000/api/insert/user", {
-      method: "POST",
+    try {
+    const response = await fetch(`http://localhost:5000/api/user/${email}/${password}`, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
-    })
-      .then((response) => response.json())
-      .then((data) => console.log(data))
-      .catch((error) => console.error("Error:", error));
-  }
+    });
 
-  return (
+    const data = await response.json();
+    console.log("Fetched user:", data);
+
+    const userData = data.user;
+
+    if (userData.Role === "Student") navigate("/student/dashboard");
+    else if (userData.Role === "Worker") navigate("/worker/dashboard");
+    else if (userData.Role === "Liaison") navigate("/liaison/dashboard");
+    else if (userData.Role === "Campus Housing") navigate("/campusHousing/dashboard");
+    else alert("Unknown username.");
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+  return (  
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
       <h2 className={`text-3xl font-bold ${c.text} mb-4`}>{title || "Sign In"}</h2>
       <p className="text-gray-600 max-w-2xl mb-4">
@@ -271,15 +271,15 @@ function SignInPage({ title, color, description, dashboardPath }) {
           handleSignIn();
         }}
       >
-        <label htmlFor="usernameInput" className="block mb-2 font-medium">
-          Enter your username:
+        <label htmlFor="emailInput" className="block mb-2 font-medium">
+          Enter your email:
         </label>
         <input
           type="text"
-          id="usernameInput"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Enter your Username"
+          id="emailInput"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your Email"
           className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <br />
