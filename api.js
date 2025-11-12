@@ -22,15 +22,15 @@ db.connect((err) => {
     console.error('Database connection failed:', err);
   } else {
     console.log('✅ Connected to XAMPP MySQL!');
-  }
+  };
 });
 
 
 // --------- Get statements --------- //
 
 // Get all jobs.
-app.get('api/service', (req, res) => {
-	db.query('SELECT * FROM "School Service"', (err, rows) => {
+app.get('/api/service', (req, res) => {
+	db.query('SELECT * FROM \`School Service\`', (err, rows) => {
 		if (err) return res.status(500).json({error: err});
 		res.json(rows);
 	});
@@ -38,9 +38,9 @@ app.get('api/service', (req, res) => {
 
 
 // Get all jobs of given type.
-app.get('api/service/:type', (req, res) => {
+app.get('/api/service/:type', (req, res) => {
     const {type} = req.params;
-	db.query('SELECT * FROM "School Service" WHERE "Type of Service" = (type)', [type], (err, rows) => {
+	db.query('SELECT * FROM \`School Service\` WHERE \`Type of Service\` = (type)', [type], (err, rows) => {
 		if (err) return res.status(500).json({error: err});
 		res.json(rows);
 	});
@@ -49,7 +49,7 @@ app.get('api/service/:type', (req, res) => {
 
 // Get all users.
 app.get('/api/users', (req, res) => {
-  db.query('SELECT * FROM "user login table"', (err, rows) => {
+  db.query('SELECT * FROM \`user login table\`', (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
   });
@@ -59,7 +59,7 @@ app.get('/api/users', (req, res) => {
 // Get user info by id.
 app.get('/api/user/:id', (req, res) => {
   const {id} = req.params;
-  db.query('SELECT * FROM "user login table" WHERE UID = ?', [id], (err, rows) => {
+  db.query('SELECT * FROM \`user login table\` WHERE UID = ?', [id], (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
   });
@@ -71,7 +71,7 @@ app.get('/api/user/:id', (req, res) => {
 // --------- Put statements --------- //
 
 // Update user attributes.
-app.put('api/put/user/:uid', (req, res) => {
+app.put('/api/put/user/:uid', (req, res) => {
   const { uid } = req.params;
   const {
     first_name,
@@ -87,8 +87,8 @@ app.put('api/put/user/:uid', (req, res) => {
   const db_query = `
     UPDATE \`user login table\`
     SET 
-    \`First Name\` = ?, \`Last Name\` = ?, Email = ?, \`Phone Number\` = ?, \`School ID\` = ?,
-    Dorm = ?, Room = ?, Role = ?, Hash = ?
+    \`First Name\` = ?, \`Last Name\` = ?, \`Email\` = ?, \`Phone Number\` = ?, \`School ID\` = ?,
+    \`Dorm\` = ?, \`Room\` = ?, \`Role\` = ?, \`Hash\` = ?
     WHERE UID = ?
   `;
     // Check for null values.
@@ -96,7 +96,7 @@ app.put('api/put/user/:uid', (req, res) => {
     return res.status(400).json({
         error: 'Missing user ID!'
     });
-  }
+  };
 
   const values = [
     first_name,
@@ -125,7 +125,7 @@ app.put('api/put/user/:uid', (req, res) => {
 
 
 // Update request information.
-app.put('api/put/service/:sid', (req, res) => {
+app.put('/api/put/service/:sid', (req, res) => {
   const { sid } = req.params;
     const {
       sno,
@@ -142,16 +142,16 @@ app.put('api/put/service/:sid', (req, res) => {
   const db_query = `
     UPDATE \`School Service\`
     SET 
-    SNO = ?, UID = ?, \`Type of Service\` = ?, \`Request Date\` = ?,
-    \`Service Date\` = ?, \`Deadline Date\` = ?, Condition = ?, \`Preferred Times\` = ?, Notes = ? 
-    WHERE SID = ?
+    \`SNO\` = ?, \`UID\` = ?, \`Type of Service\` = ?, \`Request Date\` = ?,
+    \`Service Date\` = ?, \`Deadline Date\` = ?, \`Condition\` = ?, \`Preferred Times\` = ?, \`Notes\` = ? 
+    WHERE \`SID\` = ?
   `;
     // Check for null values.
   if (!sid) {
     return res.status(400).json({
         error: 'Missing service ID!'
     });
-  }
+  };
 
   const values = [
     sno,
@@ -183,14 +183,14 @@ app.put('api/put/service/:sid', (req, res) => {
 // --------- Post statements --------- //
 
 // Insert a new request.
-app.post('api/insert/service', (req, res) => {
+app.post('/api/insert/request', (req, res) => {
 
-    const current_date = sqlDate();
+    //const current_date = sqlDate();
     const {
       uid,
       sno,
       service_type,
-      request_date = current_date,
+      request_date,
       service_date,
       deadline_date = null,
       condition = 0,
@@ -198,25 +198,26 @@ app.post('api/insert/service', (req, res) => {
       notes,
     } = req.body;
 
+    console.log(req.body);
     // Check that the user has a fridge to service.
-    if (service_type != 2){
+    if (service_type != "Delivery"){
       db.query(`SELECT * FROM Fridge_Tracker WHERE Owner = ?`, [uid], (err, result) => {
-        if (err) {
+       if (err) {
           return res.status(500).json({
             error: "Error when checking inventory.",
             details: err.message });
         }
-        if (!result){
+       if (!result){
           return res.status(404).json({
             error: "User has no fridge to service.",
           })
-        }
+        };
       });
-    }
+    };
 
 
     const db_query = `INSERT INTO \`School Service\` 
-    (SID, SNO, UID, \`Type of Service\`, \`Request Date\`, \`Service Date\`, \`Deadline Date\`, Condition, \`Preferred Times\`, Notes) 
+    (\`SID\`, \`SNO\`, \`UID\`, \`Type of Service\`, \`Request Date\`, \`Service Date\`, \`Deadline Date\`, \`Condition\`, \`Preferred Times\`, \`Notes\`) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     // Check for null values.
@@ -236,7 +237,7 @@ app.post('api/insert/service', (req, res) => {
       sno,
       uid,
       service_type,
-      request_date = current_date,
+      request_date,
       service_date,
       deadline_date,
       condition,
@@ -244,6 +245,7 @@ app.post('api/insert/service', (req, res) => {
       notes
     ]
 
+    console.log(preferred_times)
     db.query(db_query, values, (err, result) => {
       if (err) {
         return res.status(500).json({
@@ -292,6 +294,6 @@ function sqlDate(){
   
   const formattedDate = '${year}-${month}-${day}';
   return formattedDate;
-}
+};
 
 app.listen(5000, () => console.log('Server running on port 5000'));

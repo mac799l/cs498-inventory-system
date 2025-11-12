@@ -305,31 +305,65 @@ function StudentDashboard() {
     setNotes("");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+const handleSubmit = (e) => {
+  e.preventDefault();
 
-    const formattedTimes = {};
-    for (const [day, info] of Object.entries(preferredTimes)) {
-      if (info.selected) {
-        formattedTimes[day] = [info.start || "", info.end || ""];
-      }
+  const formattedTimes = {};
+  for (const [day, info] of Object.entries(preferredTimes)) {
+    if (info.selected) {
+      formattedTimes[day] = [info.start || "", info.end || ""];
     }
+  }
 
-    const requestData = {
-      typeOfService: activeForm,
-      requestDate: new Date().toISOString().split("T")[0], // current date
-      serviceDate,
-      deadlineDate,
-      condition,
-      preferredTimes: JSON.stringify(formattedTimes),
-      notes,
-    };
+  const requestData = {
+    uid: 1,
+    sno: 1,
+    service_type: activeForm,
+    request_date: new Date().toISOString().split("T")[0],
+    service_date: serviceDate,
+    deadline_date: deadlineDate,
+    condition,
+    preferred_times: JSON.stringify(formattedTimes),
+    notes,
+  };
+
+  fetch("http://localhost:5000/api/insert/request", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestData),
+  })
+    .then((response) => {
+      // Log status and headers first
+      console.log("Status:", response.status);
+      console.log("Status Text:", response.statusText);
+      console.log("Headers:", [...response.headers.entries()]);
+
+      // Check if response is actually JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        // If not JSON, read as text to see what it really is
+        return response.text().then((text) => {
+          console.error("Expected JSON but got:", text);
+          throw new Error(`Invalid JSON response: ${text.substring(0, 200)}`);
+        });
+      }
+
+      return response.json();
+    })
+    .then((data) => {
+      console.log("Success:", data);
+    })
+    .catch((error) => {
+      console.error("Fetch error:", error);
+    });
 
     console.log("Submitting request:", requestData);
     alert(`Request for ${activeForm} submitted successfully!`);
     resetForm();
     setActiveForm(null);
-  };
+};
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
