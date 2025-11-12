@@ -71,7 +71,7 @@ app.get('/api/user/:id', (req, res) => {
 // --------- Put statements --------- //
 
 // Update user attributes.
-app.put('api/put/user/:id', (req, res) => {
+app.put('api/put/user/:uid', (req, res) => {
   const { uid } = req.params;
   const {
     first_name,
@@ -165,7 +165,6 @@ app.put('api/put/service/:sid', (req, res) => {
     notes,
     sid
   ]
-
 
   db.query(db_query, values, (err, result) => {
     if (err) {
