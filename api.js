@@ -72,7 +72,7 @@ app.get('/api/user/:id', (req, res) => {
 
 // Update user attributes.
 app.put('api/put/user/:id', (req, res) => {
-  const { uid } = req.params.id;
+  const { uid } = req.params;
   const {
     first_name,
     last_name,
@@ -92,9 +92,9 @@ app.put('api/put/user/:id', (req, res) => {
     WHERE UID = ?
   `;
     // Check for null values.
-  if (!uid || !first_name || !email || !phone) {
+  if (!uid) {
     return res.status(400).json({
-        error: 'Missing one or more required fields: UID, First Name, Email, Phone Number'
+        error: 'Missing user ID!'
     });
   }
 
@@ -111,7 +111,6 @@ app.put('api/put/user/:id', (req, res) => {
     uid
   ]
 
-
   db.query(db_query, values, (err, result) => {
     if (err) {
       return res.status(500).json({
@@ -124,14 +123,60 @@ app.put('api/put/user/:id', (req, res) => {
   });
 });
 
+
 // Update request information.
-app.put('api/put/service/:sno', (req, res) => {
-  const { sno } = req.params.sno;
-  const { uid, service_type, service_date, deadline, cond, notes } = req.body;
-  db.query('UPDATE requests SET UID=(uid), "Type of Service" = (service_type), "Service Date"=(service_date), Condition=(cond), Notes=(notes), Dates=(dates) WHERE SNO=(sno)',
-    [uid, service_type, service_date, deadline, cond, notes, sno, dates], (err, rows) => {
-      if (err) return res.status(500).json({error:err});
+app.put('api/put/service/:sid', (req, res) => {
+  const { sid } = req.params;
+    const {
+      sno,
+      uid,
+      service_type,
+      request_date,
+      service_date,
+      deadline_date,
+      condition,
+      preferred_times,
+      notes
+    } = req.body;
+
+  const db_query = `
+    UPDATE \`School Service\`
+    SET 
+    SNO = ?, UID = ?, \`Type of Service\` = ?, \`Request Date\` = ?,
+    \`Service Date\` = ?, \`Deadline Date\` = ?, Condition = ?, \`Preferred Times\` = ?, Notes = ? 
+    WHERE SID = ?
+  `;
+    // Check for null values.
+  if (!sid) {
+    return res.status(400).json({
+        error: 'Missing service ID!'
     });
+  }
+
+  const values = [
+    sno,
+    uid,
+    service_type,
+    request_date,
+    service_date,
+    deadline_date,
+    condition,
+    preferred_times,
+    notes,
+    sid
+  ]
+
+
+  db.query(db_query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        error: "Database update failed",
+        details: err.message });
+    }
+    res.status(200).json({
+      message: "Request updated successfully."
+    });
+  });
 });
 
 
