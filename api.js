@@ -66,6 +66,30 @@ app.get('/api/user/:id', (req, res) => {
 });
 
 
+// Get user info by login information.
+app.get('/api/user/:email/:pass', (req, res) => {
+  const { email, pass } = req.params;
+
+  db.query('SELECT * FROM `user login table` WHERE `Email` = ?', [email], async (err, rows) => {
+    if (err) return res.status(500).json({ error: err });
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const user = rows[0];
+
+    try {
+      const match = await bcrypt.compare(pass, user.Hash); // compare plain password to stored hash
+      if (match) {
+        res.status(200).json({ success: true, user });
+      } else {
+        res.status(401).json({ error: 'Invalid password' });
+      }
+    } catch (err) {
+      res.status(500).json({ error: 'Password comparison failed', details: err });
+    }
+  });
+});
+
+
 
 
 // --------- Put statements --------- //
@@ -278,7 +302,7 @@ app.post('/api/insert/user', async (req, res) => {
       if (err) {
         return res.status(500).json({ error: err });
       }
-      res.status(200).json({ success: true, userId: uid });
+      res.status(200).json({ success: true });
     });
   } catch (err) {
     res.status(500).json({ error: 'Hashing failed', details: err });

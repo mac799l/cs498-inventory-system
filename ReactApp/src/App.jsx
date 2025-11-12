@@ -231,6 +231,32 @@ function SignInPage({ title, color, description, dashboardPath }) {
   else alert("Unknown username.");
   };
 
+  async function handle() {
+ 
+    const data = {
+      firstname: firstname,
+      lastname: lastname,
+      password: password, //used for hash
+      email: email,
+      phone: phone,
+      role: role,
+      school_id : schoolID,
+      dorm: dorm,
+      room: roomnum
+    }
+ 
+    await fetch("http://localhost:5000/api/insert/user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .then((data) => console.log(data))
+      .catch((error) => console.error("Error:", error));
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
       <h2 className={`text-3xl font-bold ${c.text} mb-4`}>{title || "Sign In"}</h2>
