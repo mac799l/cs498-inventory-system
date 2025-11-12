@@ -57,7 +57,7 @@ function Signup({ color, description } ) {
   const [roomnum, setRoomNum] = useState(null);
  
   async function handleSubmission(event) {
- 
+    event.preventDefault();
     const data = {
       firstname: firstname,
       lastname: lastname,
