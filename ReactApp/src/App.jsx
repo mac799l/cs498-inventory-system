@@ -1,5 +1,18 @@
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
+
+const UserContext = createContext();
+
+//holds current user info
+function UserProvider({ children }) {
+const [user, setUser] = useState(null); // user info will be stored here
+
+return (
+  <UserContext.Provider value={{ user, setUser }}>
+    {children}
+  </UserContext.Provider>
+);
+}
 
 // Home display
 function Home() {
@@ -211,6 +224,7 @@ return (
 // Sign-in page
 function SignInPage({ title, color, description, dashboardPath }) {
   const navigate = useNavigate();
+  const { user, setUser } = useContext(UserContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loggedin, setLoggedIn] = useState(true);
@@ -237,12 +251,14 @@ function SignInPage({ title, color, description, dashboardPath }) {
     const data = await response.json();
     console.log("Fetched user:", data);
 
-    const userData = data.user;
-
-    if (userData.Role === "Student") navigate("/student/dashboard");
-    else if (userData.Role === "Worker") navigate("/worker/dashboard");
-    else if (userData.Role === "Liaison") navigate("/liaison/dashboard");
-    else if (userData.Role === "Campus Housing") navigate("/campusHousing/dashboard");
+    if(data.success) {
+      setUser(data.user)
+    }
+    console.log(user);
+    if (data.user.Role === "Student") navigate("/student/dashboard");
+    else if (data.user.Role === "Worker") navigate("/worker/dashboard");
+    else if (data.user.Role === "Liaison") navigate("/liaison/dashboard");
+    else if (data.user.Role === "Campus Housing") navigate("/campusHousing/dashboard");
     else alert("Unknown username.");
   } catch (error) {
     console.error("Error:", error);
@@ -316,6 +332,7 @@ function SignInPage({ title, color, description, dashboardPath }) {
 }
 
 function StudentDashboard() {
+  const { user } = useContext(UserContext);
   const [activeForm, setActiveForm] = useState(null);
   const [serviceDate, setServiceDate] = useState("");
   const [deadlineDate, setDeadlineDate] = useState("");
@@ -399,6 +416,7 @@ const handleSubmit = (e) => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
       <h1 className="text-3xl font-bold mb-8 text-blue-800">Student Dashboard</h1>
+      <h2 className="text-3xl font-bold mb-8 text-blue-800">Hello {user["First Name"]}</h2>
 
       {/* Grid of Service Options */}
       {!activeForm && (
@@ -612,6 +630,7 @@ const handleSubmit = (e) => {
 }
 
 function WorkerDashboard() {
+  const { user } = useContext(UserContext);
   const cards = [
     {
       title: "Log Hours",
@@ -636,6 +655,7 @@ function WorkerDashboard() {
       <h2 className="text-4xl font-bold text-green-700 mb-6">
         Worker Dashboard
       </h2>
+      <h2 className="text-3xl font-bold mb-8 text-green-800">Hello {user["First Name"]}</h2>
       <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
@@ -663,6 +683,7 @@ function WorkerDashboard() {
 }
 
 function LiaisonDashboard() {
+  const { user } = useContext(UserContext);
   const cards = [
     {
       title: "Schools Dashboard",
@@ -687,6 +708,7 @@ function LiaisonDashboard() {
       <h2 className="text-4xl font-bold text-purple-700 mb-6">
         Liaison Dashboard
       </h2>
+      <h2 className="text-3xl font-bold mb-8 text-purple-800">Hello {user["First Name"]}</h2>
       <p className="text-gray-600 mb-8">
         Manage school metrics and worker activity.
       </p>
@@ -716,6 +738,7 @@ function LiaisonDashboard() {
 }
 
 function CampusHousingDashboard() {
+  const { user } = useContext(UserContext);
   const cards = [
     {
       title: "Schools Dashboard",
@@ -740,6 +763,7 @@ function CampusHousingDashboard() {
       <h2 className="text-4xl font-bold text-amber-700 mb-6">
         Campus Housing Dashboard
       </h2>
+      <h2 className="text-3xl font-bold mb-8 text-amber-800">Hello {user["First Name"]}</h2>
       <p className="text-gray-600 mb-8">
         Manage fridge logistics and assignments for your campuses.
       </p>
@@ -768,8 +792,8 @@ function CampusHousingDashboard() {
   );
 }
 
-
 function App() {
+
   const colorMap = {
     blue: "bg-blue-600 hover:bg-blue-700",
     green: "bg-green-600 hover:bg-green-700",
@@ -777,7 +801,10 @@ function App() {
     amber: "bg-amber-600 hover:bg-amber-700",
   };
 
+
+
   return (
+    <UserProvider>
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900">
       <nav className="bg-blue-800 text-blue-100 flex justify-between items-center px-6 py-3 shadow-lg relative">
         <div className="flex items-center gap-3">
@@ -835,6 +862,7 @@ function App() {
         </Link>
       </footer>
     </div>
+    </UserProvider>
   );
 }
 
