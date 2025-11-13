@@ -58,6 +58,7 @@ function Signup({ color, description } ) {
  
   async function handleSubmission(event) {
     event.preventDefault();
+
     const data = {
       firstname: firstname,
       lastname: lastname,
@@ -79,6 +80,16 @@ function Signup({ color, description } ) {
     })
       .then((response) => response.json())
       .then((data) => console.log(data))
+      .then(() => alert("User created successfully! Return to home to sign in"))
+      .then(() => {  setRole("");
+        setFirstname("");
+        setLastname("");
+        setPassword("");
+        setEmail("");
+        setPhone("");
+        setSchoolID("");
+        setDorm("");
+      setRoomNum(""); })
       .catch((error) => console.error("Error:", error));
   }
  
@@ -118,7 +129,13 @@ return (
     <label className="block mb-2 font-medium">Select your role:</label>
     <select
       value={role}
-      onChange={(e) => setRole(e.target.value)}
+      onChange={(e) => { setRole(e.target.value)
+        if (e.target.value !== "Student") {
+          setSchoolID("");
+          setDorm("");
+          setRoomNum("");
+        }
+      }}
       className="border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
     >
       <option value="">Select role</option>
@@ -174,7 +191,7 @@ return (
     />
  
     {role === 'Student' && (
-      <>
+      <div className="flex flex-col">
         <select
         value={schoolID}
         onChange={(e) => setSchoolID(e.target.value)}
@@ -203,7 +220,7 @@ return (
           placeholder="Enter your room number"
           className="border border-gray-300 rounded-lg px-3 py-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
-      </>
+      </div>
     )}
  
     <button
