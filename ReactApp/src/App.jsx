@@ -192,6 +192,7 @@ return (
  
     {role === 'Student' && (
       <div className="flex flex-col">
+        <label className="block mb-2 font-medium">School:</label>
         <select
         value={schoolID}
         onChange={(e) => setSchoolID(e.target.value)}
@@ -203,7 +204,7 @@ return (
           <option value="1004">Eastern Kentucky University</option>
         </select>
  
-        <label className="block mb-2 font-medium">Dorm</label>
+        <label className="block mb-2 font-medium">Dorm:</label>
         <input
           type="text"
           value={dorm}
@@ -212,7 +213,7 @@ return (
           className="border border-gray-300 rounded-lg px-3 py-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
  
-        <label className="block mb-2 font-medium">Room number</label>
+        <label className="block mb-2 font-medium">Room number:</label>
         <input
           type="text"
           value={roomnum}
@@ -327,10 +328,10 @@ function SignInPage({ title, color, description, dashboardPath }) {
 
         <div>
           {loggedin ? (
-            <text style={{display:'none'}}>Invalid email or password. Try again.</text>
+            <p style={{display:'none'}}>Invalid email or password. Try again.</p>
           ) : (
             <>
-            <text style={{color: 'red'}}>Invalid email or password. Try again.</text>
+            <p style={{color: 'red'}}>Invalid email or password. Try again.</p>
             <br />
             <br />
             </>
