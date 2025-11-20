@@ -651,53 +651,154 @@ const handleSubmit = (e) => {
 
 function WorkerDashboard() {
   const { user } = useContext(UserContext);
-  const cards = [
+  const [view, setView] = useState("main"); // main or requests
+
+  /* ============================================================
+     SAMPLE JOB DATA — Replace w/ real backend later
+     ============================================================ */
+  const requests = [
     {
-      title: "Log Hours",
-      desc: "Record your work hours for payroll and tracking.",
-      action: () => alert("Open Log Hours form"),
+      id: 1,
+      type: "Fridge Cleaning",
+      scheduled: "2025-03-02",
+      location: "Building A – Room 102",
+      status: "Pending",
     },
     {
-      title: "Log Dirty Fridge",
-      desc: "Report a fridge that needs cleaning or removal.",
-      action: () => alert("Open Dirty Fridge form"),
+      id: 2,
+      type: "Fridge Pickup",
+      scheduled: "2025-03-05",
+      location: "Building B – Loading Dock",
+      status: "Pending",
     },
     {
-      title: "Fridge Scanner (Coming Soon)",
-      desc: "Scan fridge barcodes to update inventory instantly.",
-      action: () => alert("Scanner feature coming soon"),
+      id: 3,
+      type: "Fridge Delivery",
+      scheduled: "2025-03-07",
+      location: "Building C – Room 221",
+      status: "Completed",
     },
   ];
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
-    <div className="px-6 py-10 sm:pl-12">
-      <h2 className="text-4xl font-bold text-green-700 mb-6">
-        Worker Dashboard
-      </h2>
-      <h2 className="text-3xl font-bold mb-8 text-green-800">Hello {user["First Name"]}</h2>
-      <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
+  const markComplete = (id) => {
+    alert(`Marked job #${id} as completed`);
+    // Future improvement: call backend API here
+  };
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all"
-          >
-            <h3 className="text-2xl font-semibold text-green-700 mb-3">
-              {card.title}
-            </h3>
-            <p className="text-gray-600 mb-5">{card.desc}</p>
-            <button
-              onClick={card.action}
-              className="px-5 py-2 !bg-green-600 !text-white rounded-lg !hover:bg-green-700 transition"
-            >
-              Open
-            </button>
+  /* ============================================================
+     MAIN WORKER DASHBOARD VIEW
+     ============================================================ */
+  if (view === "main") {
+    const cards = [
+      {
+        title: "Fridge Request",
+        desc: "View and complete assigned fridge-related tasks.",
+        action: () => setView("requests"),
+      },
+      {
+        title: "Log Dirty Fridge",
+        desc: "Report a fridge that needs cleaning or removal.",
+        action: () => alert("Open Dirty Fridge form"),
+      },
+      {
+        title: "Fridge Scanner (Coming Soon)",
+        desc: "Scan fridge barcodes to update inventory instantly.",
+        action: () => alert("Scanner feature coming soon"),
+      },
+    ];
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
+        <div className="px-6 py-10 sm:pl-12">
+          <h2 className="text-4xl font-bold text-green-700 mb-6">
+            Worker Dashboard
+          </h2>
+
+          <h2 className="text-3xl font-bold mb-8 text-green-800">
+            Hello {user["First Name"]}
+          </h2>
+
+          <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
+            {cards.map((card) => (
+              <div
+                key={card.title}
+                className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all"
+              >
+                <h3 className="text-2xl font-semibold text-green-700 mb-3">
+                  {card.title}
+                </h3>
+
+                <p className="text-gray-600 mb-5">{card.desc}</p>
+
+                <button
+                  onClick={card.action}
+                  className="px-5 py-2 !bg-green-600 !text-white rounded-lg !hover:bg-green-700 transition"
+                >
+                  Open
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  /* ============================================================
+     FRIDGE REQUEST TABLE SUBMENU VIEW
+     ============================================================ */
+  return (
+    <div className="px-6 py-10 max-w-5xl mx-auto">
+
+      <button
+        onClick={() => setView("main")}
+        className="mb-6 px-4 py-2 bg-green-200 text-green-800 rounded-lg hover:bg-green-300 transition"
+      >
+        ← Back to Worker Dashboard
+      </button>
+
+      <h1 className="text-4xl font-bold text-green-700 mb-6">
+        Fridge Requests
+      </h1>
+
+      <p className="text-gray-600 mb-8">
+        Complete your assigned fridge-related jobs.
+      </p>
+
+      <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
+        <table className="w-full text-left">
+          <thead className="bg-green-100">
+            <tr>
+              <th className="px-4 py-3 font-semibold text-green-800">Job Type</th>
+              <th className="px-4 py-3 font-semibold text-green-800">Scheduled For</th>
+              <th className="px-4 py-3 font-semibold text-green-800">Location</th>
+              <th className="px-4 py-3 font-semibold text-green-800">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {requests.map((req) => (
+              <tr key={req.id} className="border-t">
+                <td className="px-4 py-3">{req.type}</td>
+                <td className="px-4 py-3">{req.scheduled}</td>
+                <td className="px-4 py-3">{req.location}</td>
+                <td className="px-4 py-3">
+                    <button
+                      onClick={() => markComplete(req.id)}
+                      className="px-4 py-2 !bg-green-600 !text-white rounded-lg !hover:bg-green-700 transition"
+                    >
+                      Complete
+                    </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+
+        </table>
+      </div>
+
     </div>
   );
 }
