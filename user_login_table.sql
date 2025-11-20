@@ -41,7 +41,7 @@ CREATE TABLE `Login` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Login Table to verify User Information';
 COMMIT;
 
-INSERT INTO `user login table`
+INSERT INTO `Login`
 (`First Name`, `Last Name`, `Email`, `Phone Number`, `School ID`, `Dorm`, `Room`, `Role`, `Hash`)
 VALUES
 ('Request', 'Test', 'request@school.edu', '000-000-0000', 1001, 'Woodland Glen IV', 231, 'Student', '$2a$10$zc3i/EKIl.AuXj5O1kSjVeyOF1IHtzO/sGmssiz7VKPzI0UKbU5Se');
