@@ -1,5 +1,5 @@
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useMemo } from "react";
 
 const UserContext = createContext();
 
@@ -702,56 +702,170 @@ function WorkerDashboard() {
 }
 
 function LiaisonDashboard() {
-  const { user } = useContext(UserContext);
-  const cards = [
-    {
-      title: "Schools Dashboard",
-      desc: "View maintenance requests, deadlines, and fridge assignments.",
-      action: () => alert("View Schools Dashboard"),
-    },
-    {
-      title: "Worker Metrics",
-      desc: "Track worker hours, payment status, and task performance.",
-      action: () => alert("View Worker Metrics"),
-    },
-    {
-      title: "Generate Reports",
-      desc: "Export summarized performance and maintenance data.",
-      action: () => alert("Generate Reports"),
-    },
+   const { user } = useContext(UserContext);
+  const [view, setView] = useState("main"); 
+  // main = card view, schools = schools submenu
+
+  /* ============================================================
+     SAMPLE JOB DATA (replace with real DB later)
+     ============================================================ */
+  const jobs = [
+    { id: 1, type: "Fridge Delivery", scheduled: "2025-03-01", status: "Completed" },
+    { id: 2, type: "Fridge Maintenance", scheduled: "2025-03-10", status: "Pending" },
+    { id: 3, type: "Fridge Pickup", scheduled: "2025-03-15", status: "Completed" },
   ];
 
+  const countsByType = useMemo(() => {
+    const out = {};
+    jobs.forEach(j => { out[j.type] = (out[j.type] || 0) + 1; });
+    return out;
+  }, [jobs]);
+
+  const countsByStatus = useMemo(() => {
+    const out = {};
+    jobs.forEach(j => { out[j.status] = (out[j.status] || 0) + 1; });
+    return out;
+  }, [jobs]);
+
+  /* ============================================================
+     MAIN DASHBOARD VIEW
+     ============================================================ */
+  if (view === "main") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
+        <div className="px-6 py-10 sm:pl-12">
+
+          <h2 className="text-4xl font-bold text-purple-700 mb-6">
+            Liaison Dashboard
+          </h2>
+
+          <h2 className="text-3xl font-bold mb-8 text-purple-800">
+            Hello {user["First Name"]}
+          </h2>
+
+          <p className="text-gray-600 mb-8">
+            Manage school metrics and worker activity.
+          </p>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
+            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
+              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
+                Schools Dashboard
+              </h3>
+              <p className="text-gray-600 mb-5">
+                View maintenance requests, deadlines, and fridge assignments.
+              </p>
+              <button
+                onClick={() => setView("schools")}
+                className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition"
+              >
+                Open
+              </button>
+            </div>
+
+            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
+              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
+                Worker Metrics
+              </h3>
+              <p className="text-gray-600 mb-5">
+                Track worker hours, payment status, and task performance.
+              </p>
+              <button className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition">
+                Open
+              </button>
+            </div>
+
+            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
+              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
+                Generate Reports
+              </h3>
+              <p className="text-gray-600 mb-5">
+                Export summarized performance and maintenance data.
+              </p>
+              <button className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition">
+                Open
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
+     SCHOOLS DASHBOARD SUBMENU VIEW
+     ============================================================ */
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
-    <div className="px-6 py-10 sm:pl-12">
-      <h2 className="text-4xl font-bold text-purple-700 mb-6">
-        Liaison Dashboard
-      </h2>
-      <h2 className="text-3xl font-bold mb-8 text-purple-800">Hello {user["First Name"]}</h2>
+    <div className="px-6 py-10 max-w-5xl mx-auto">
+
+      <button
+        onClick={() => setView("main")}
+        className="mb-6 px-4 py-2 bg-purple-200 text-purple-800 rounded-lg hover:bg-purple-300 transition"
+      >
+        ← Back to Liaison Dashboard
+      </button>
+
+      <h1 className="text-4xl font-bold text-purple-700 mb-6">
+        Schools Dashboard
+      </h1>
       <p className="text-gray-600 mb-8">
-        Manage school metrics and worker activity.
+        Overview of scheduled school jobs and completion status.
       </p>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all"
-          >
-            <h3 className="text-2xl font-semibold text-purple-700 mb-3">
-              {card.title}
-            </h3>
-            <p className="text-gray-600 mb-5">{card.desc}</p>
-            <button
-              onClick={card.action}
-              className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition"
-            >
-              Open
-            </button>
-          </div>
-        ))}
+      {/* TABLE */}
+      <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
+        <table className="w-full text-left">
+          <thead className="bg-purple-100">
+            <tr>
+              <th className="px-4 py-3 font-semibold text-purple-800">Job Type</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Scheduled For</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {jobs.map(job => (
+              <tr key={job.id} className="border-t">
+                <td className="px-4 py-3">{job.type}</td>
+                <td className="px-4 py-3">{job.scheduled}</td>
+                <td
+                  className={`px-4 py-3 font-semibold ${
+                    job.status === "Completed"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {job.status}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+
+      {/* AGGREGATES */}
+      <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <div className="p-6 bg-white rounded-2xl shadow border">
+          <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Type</h2>
+          {Object.entries(countsByType).map(([type, count]) => (
+            <p key={type} className="text-gray-700">
+              {type}: <span className="font-bold">{count}</span>
+            </p>
+          ))}
+        </div>
+
+        <div className="p-6 bg-white rounded-2xl shadow border">
+          <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Status</h2>
+          {Object.entries(countsByStatus).map(([status, count]) => (
+            <p key={status} className="text-gray-700">
+              {status}: <span className="font-bold">{count}</span>
+            </p>
+          ))}
+        </div>
+
+      </div>
     </div>
   );
 }
