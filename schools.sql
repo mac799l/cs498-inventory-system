@@ -28,7 +28,7 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `Schools` (
-  `Name` varchar(50) NOT NULL,
+  `Name` varchar(50) UNIQUE NOT NULL,
   `SID` INT AUTO_INCREMENT PRIMARY KEY NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='School Lookup For Each Name to ID';
 COMMIT;

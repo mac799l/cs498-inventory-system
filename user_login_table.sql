@@ -27,10 +27,10 @@ SET time_zone = "+00:00";
 -- Table structure for table `user login table`
 --
 
-CREATE TABLE `user login table` (
+CREATE TABLE `Login` (
   `First Name` varchar(25) NOT NULL,
   `Last Name` varchar(25),
-  `Email` varchar(60) NOT NULL,
+  `Email` varchar(60) UNIQUE NOT NULL,
   `Phone Number` varchar(14) NOT NULL,
   `UID` int(12) UNIQUE AUTO_INCREMENT NOT NULL,
   `School ID` int(4) NULL,
@@ -41,7 +41,7 @@ CREATE TABLE `user login table` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Login Table to verify User Information';
 COMMIT;
 
-INSERT INTO `user login table`
+INSERT INTO `Login`
 (`First Name`, `Last Name`, `Email`, `Phone Number`, `School ID`, `Dorm`, `Room`, `Role`, `Hash`)
 VALUES
 ('Request', 'Test', 'request@school.edu', '000-000-0000', 1001, 'Woodland Glen IV', 231, 'Student', '$2a$10$zc3i/EKIl.AuXj5O1kSjVeyOF1IHtzO/sGmssiz7VKPzI0UKbU5Se');

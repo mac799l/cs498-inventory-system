@@ -27,7 +27,7 @@ SET time_zone = "+00:00";
 -- Table structure for table `School by School`
 --
 
-CREATE TABLE `School Service` (
+CREATE TABLE `Service` (
   `SID` int(10) NOT NULL COMMENT 'SERVICE ID',
   `SNO` int(4) NOT NULL COMMENT 'School Number',
   `UID` int(12) NOT NULL,
