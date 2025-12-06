@@ -30,7 +30,7 @@ db.connect((err) => {
 
 // Get all jobs.
 app.get('/api/service', (req, res) => {
-	db.query('SELECT * FROM \`School Service\`', (err, rows) => {
+	db.query('SELECT * FROM \`Service\`', (err, rows) => {
 		if (err) return res.status(500).json({error: err});
 		res.json(rows);
 	});
@@ -40,7 +40,7 @@ app.get('/api/service', (req, res) => {
 // Get all jobs of given type.
 app.get('/api/service/:type', (req, res) => {
     const {type} = req.params;
-	db.query('SELECT * FROM \`School Service\` WHERE \`Type of Service\` = (type)', [type], (err, rows) => {
+	db.query('SELECT * FROM \`Service\` WHERE \`Type of Service\` = (type)', [type], (err, rows) => {
 		if (err) return res.status(500).json({error: err});
 		res.json(rows);
 	});
@@ -49,7 +49,7 @@ app.get('/api/service/:type', (req, res) => {
 
 // Get all users.
 app.get('/api/users', (req, res) => {
-  db.query('SELECT * FROM \`user login table\`', (err, rows) => {
+  db.query('SELECT * FROM \`Login\`', (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
   });
@@ -59,7 +59,7 @@ app.get('/api/users', (req, res) => {
 // Get user info by id.
 app.get('/api/user/:id', (req, res) => {
   const {id} = req.params;
-  db.query('SELECT * FROM \`user login table\` WHERE UID = ?', [id], (err, rows) => {
+  db.query('SELECT * FROM \`Login\` WHERE UID = ?', [id], (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
   });
@@ -70,7 +70,7 @@ app.get('/api/user/:id', (req, res) => {
 app.get('/api/user/:email/:pass', (req, res) => {
   const { email, pass } = req.params;
 
-  db.query('SELECT * FROM `user login table` WHERE `Email` = ?', [email], async (err, rows) => {
+  db.query('SELECT * FROM `Login` WHERE `Email` = ?', [email], async (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
@@ -109,7 +109,7 @@ app.put('/api/put/user/:uid', (req, res) => {
   } = req.body;
 
   const db_query = `
-    UPDATE \`user login table\`
+    UPDATE \`Login\`
     SET 
     \`First Name\` = ?, \`Last Name\` = ?, \`Email\` = ?, \`Phone Number\` = ?, \`School ID\` = ?,
     \`Dorm\` = ?, \`Room\` = ?, \`Role\` = ?, \`Hash\` = ?
@@ -164,7 +164,7 @@ app.put('/api/put/service/:sid', (req, res) => {
     } = req.body;
 
   const db_query = `
-    UPDATE \`School Service\`
+    UPDATE \`Service\`
     SET 
     \`SNO\` = ?, \`UID\` = ?, \`Type of Service\` = ?, \`Request Date\` = ?,
     \`Service Date\` = ?, \`Deadline Date\` = ?, \`Condition\` = ?, \`Preferred Times\` = ?, \`Notes\` = ? 
@@ -265,7 +265,7 @@ app.post('/api/insert/request', (req, res) => {
         const sid = Math.floor(Math.random() * 1024); // 0 to 1023
 
         const db_query = `
-            INSERT INTO \`School Service\`
+            INSERT INTO \`Service\`
             (\`SID\`, \`SNO\`, \`UID\`, \`Type of Service\`, \`Request Date\`, \`Service Date\`, 
              \`Deadline Date\`, \`Condition\`, \`Preferred Times\`, \`Notes\`)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -312,7 +312,7 @@ app.post('/api/insert/user', async (req, res) => {
     const hash = await bcrypt.hash(password, saltRounds);
 
     const query = 
-    `INSERT INTO \`user login table\` 
+    `INSERT INTO \`Login\` 
     (\`First Name\`, \`Last Name\`, \`Email\`, \`Phone Number\`, \`School ID\`, \`Dorm\`, \`Room\`, \`Role\`, \`Hash\`) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
