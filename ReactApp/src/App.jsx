@@ -667,44 +667,59 @@ function WorkerDashboard() {
           headers: { 'Content-Type': 'application/json' },
         });
 
-        if (!res.ok) {
-          throw new Error('Failed to fetch service requests');
-        }
-
+        if (!res.ok) throw new Error('Failed to fetch service requests');
         const data = await res.json();
 
         const uniqueUIDs = [...new Set(data.map((req) => req.UID))];
+
+        // Fetch all users, but don't fail the whole thing if one is missing
         const userPromises = uniqueUIDs.map((uid) =>
-          fetch(`http://localhost:5000/api/user/${uid}`).then((r) => {
-            if (!r.ok) throw new Error(`User not found for UID: ${uid}`);
-            return r.json();
-          })
+          fetch(`http://localhost:5000/api/user/${uid}`)
+            .then((r) => {
+              if (!r.ok) {
+                console.warn(`User not found for UID: ${uid} (${r.status})`);
+                return null; // Mark as missing instead of throwing
+              }
+              return r.json();
+            })
+            .catch((err) => {
+              console.warn(`Failed to fetch user ${uid}:`, err);
+              return null;
+            })
         );
 
-        let users;
-        try {
-          users = await Promise.all(userPromises);
-        } catch (err) {
-          console.error('Some user fetches failed:', err);
-          users = [];
-        }
+        const userResults = await Promise.allSettled(userPromises);
+        
+        console.log("User results:");
+        console.log(userResults);
+        // Extract successfully fetched users
+        const successfulUsers = userResults
+          .filter((r) => r.status === "fulfilled" && r.value !== null)
+          .map((r) => r.value[0]);
+
 
         const userMap = Object.fromEntries(
-          users.map((u) => [u.UID, u])
+          successfulUsers.map((u) => [u.UID, u])
         );
 
-        // Enrich requests
+
+        console.log("Successful users:");
+        console.log(successfulUsers);
+
+        // Enrich requests with location
         const enriched = data.map((req) => {
           const userData = userMap[req.UID];
-          return {
-            ...req,
-            location: userData?.Dorm && userData?.Room
-              ? `${userData.Dorm} ${userData.Room}`
-              : 'Location N/A',
-          };
+          const location = userData?.Dorm && userData?.Room
+            ? `${userData.Dorm} ${userData.Room}`
+            : 'Location N/A';
+          return { ...req, location };
         });
+        
+        console.log("enriched:");
+        console.log(enriched);
 
         setRequests(enriched);
+        console.log(enriched);
       } catch (err) {
         console.error('Error loading service requests:', err);
         setError('Failed to load requests. Please try again.');
@@ -717,26 +732,69 @@ function WorkerDashboard() {
   }, []);
 
 
-  const markStatus = async (id, status) => {
-    if (!window.confirm('Mark this job as \'' + status + '\'?')) return;
+const changeCondition = async (id, condition) => {
+  if (condition == 'Clean'){
+    condition = 'Dirty';
+  }
+  else{
+    condition = 'Clean';
+  }
+  
+  if (!window.confirm(`Mark this fridge as '${condition}'?`)) return;
 
-    try {
-      const res = await fetch(`http://localhost:5000/api/service/${id}/${status}`, {
-        method: 'PUT', // Adjust to your backend (e.g., PATCH, PUT, or DELETE)
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Completed' }), // If your API expects this
-      });
+  try {
+    const res = await fetch(`http://localhost:5000/api/service/${id}/${condition}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ condition }),
+    });
 
-      if (!res.ok) {
-        throw new Error('Failed to mark as complete');
-      }
+    if (!res.ok) throw new Error("Failed to update condition");
 
-      setRequests((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      console.error('Failed to mark complete:', err);
-      alert('Failed to complete job. Please try again.');
-    }
-  };
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.SID === id ? { ...r, Condition: condition } : r
+      )
+    );
+
+  } catch (err) {
+    console.error("Failed to update:", err);
+    alert("Failed to update job status.");
+  }
+};
+
+
+const changeStatus = async (id, status) => {
+  if (status == 'Completed'){
+    status = 'In Progress';
+  }
+  else{
+    status = 'Completed';
+  }
+  
+  if (!window.confirm(`Mark this job as '${status}'?`)) return;
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/service/${id}/${status}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!res.ok) throw new Error("Failed to update status");
+
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.SID === id ? { ...r, Status: status } : r
+      )
+    );
+
+  } catch (err) {
+    console.error("Failed to update:", err);
+    alert("Failed to update job status.");
+  }
+};
+
 
 
   /* ============================================================
@@ -836,6 +894,7 @@ function WorkerDashboard() {
                 <th className="px-7 py-5 font-semibold text-green-800">Location</th>
                 <th className="px-7 py-5 font-semibold text-green-800">Notes</th>
                 <th className="px-7 py-5 font-semibold text-green-800">Status</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Condition</th>
                 <th className="px-7 py-5 font-semibold text-green-800">Actions</th>
               </tr>
             </thead>
@@ -852,20 +911,21 @@ function WorkerDashboard() {
                   <td className="px-7 py-5">{req.location}</td>
                   <td className="px-7 py-5">{req.Notes || 'None'}</td>
                   <td className="px-7 py-5">{req.Status || 'None'}</td>
+                  <td className="px-7 py-5">{req.Condition || 'None'}</td>
                   <td className="px-7 py-5">
                     <button
-                      onClick={() => markStatus(req.SID, 'In Progress')}
+                      onClick={() => changeStatus(req.SID, req.Status)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                     >
-                      In Progress
+                      Change Status
                     </button>
                   </td>
                                     <td className="px-7 py-5">
                     <button
-                      onClick={() => markStatus(req.SID, 'Completed')}
+                      onClick={() => changeCondition(req.SID, req.Condition)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                     >
-                      Complete
+                      Change Condition
                     </button>
                   </td>
                 </tr>
@@ -877,6 +937,8 @@ function WorkerDashboard() {
     </div>
   );
 }
+
+
 
 function LiaisonDashboard() {
    const { user } = useContext(UserContext);
