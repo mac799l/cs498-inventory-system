@@ -649,61 +649,115 @@ const handleSubmit = (e) => {
   );
 }
 
+
 function WorkerDashboard() {
   const { user } = useContext(UserContext);
-  const [view, setView] = useState("main"); // main or requests
+  const [view, setView] = useState('main');
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  /* ============================================================
-     SAMPLE JOB DATA — Replace w/ real backend later
-     ============================================================ */
-  const requests = [
-    {
-      id: 1,
-      type: "Fridge Cleaning",
-      scheduled: "2025-03-02",
-      location: "Building A – Room 102",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      type: "Fridge Pickup",
-      scheduled: "2025-03-05",
-      location: "Building B – Loading Dock",
-      status: "Pending",
-    },
-    {
-      id: 3,
-      type: "Fridge Delivery",
-      scheduled: "2025-03-07",
-      location: "Building C – Room 221",
-      status: "Completed",
-    },
-  ];
+  useEffect(() => {
+    const loadRequests = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('http://localhost:5000/api/service/', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-  const markComplete = (id) => {
-    alert(`Marked job #${id} as completed`);
-    // Future improvement: call backend API here
+        if (!res.ok) {
+          throw new Error('Failed to fetch service requests');
+        }
+
+        const data = await res.json();
+
+        const uniqueUIDs = [...new Set(data.map((req) => req.UID))];
+        const userPromises = uniqueUIDs.map((uid) =>
+          fetch(`http://localhost:5000/api/user/${uid}`).then((r) => {
+            if (!r.ok) throw new Error(`User not found for UID: ${uid}`);
+            return r.json();
+          })
+        );
+
+        let users;
+        try {
+          users = await Promise.all(userPromises);
+        } catch (err) {
+          console.error('Some user fetches failed:', err);
+          users = [];
+        }
+
+        const userMap = Object.fromEntries(
+          users.map((u) => [u.UID, u])
+        );
+
+        // Enrich requests
+        const enriched = data.map((req) => {
+          const userData = userMap[req.UID];
+          return {
+            ...req,
+            location: userData?.Dorm && userData?.Room
+              ? `${userData.Dorm} ${userData.Room}`
+              : 'Location N/A',
+          };
+        });
+
+        setRequests(enriched);
+      } catch (err) {
+        console.error('Error loading service requests:', err);
+        setError('Failed to load requests. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRequests();
+  }, []);
+
+
+  const markStatus = async (id, status) => {
+    if (!window.confirm('Mark this job as \'' + status + '\'?')) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/service/${id}/${status}`, {
+        method: 'PUT', // Adjust to your backend (e.g., PATCH, PUT, or DELETE)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Completed' }), // If your API expects this
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to mark as complete');
+      }
+
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error('Failed to mark complete:', err);
+      alert('Failed to complete job. Please try again.');
+    }
   };
+
 
   /* ============================================================
      MAIN WORKER DASHBOARD VIEW
      ============================================================ */
-  if (view === "main") {
+  if (view === 'main') {
     const cards = [
       {
-        title: "Fridge Request",
-        desc: "View and complete assigned fridge-related tasks.",
-        action: () => setView("requests"),
+        title: 'Fridge Request',
+        desc: 'View and complete assigned fridge-related tasks.',
+        action: () => setView('requests'),
       },
       {
-        title: "Log Dirty Fridge",
-        desc: "Report a fridge that needs cleaning or removal.",
-        action: () => alert("Open Dirty Fridge form"),
+        title: 'Log Dirty Fridge',
+        desc: 'Report a fridge that needs cleaning or removal.',
+        action: () => alert('Open Dirty Fridge form'),
       },
       {
-        title: "Fridge Scanner (Coming Soon)",
-        desc: "Scan fridge barcodes to update inventory instantly.",
-        action: () => alert("Scanner feature coming soon"),
+        title: 'Fridge Scanner (Coming Soon)',
+        desc: 'Scan fridge barcodes to update inventory instantly.',
+        action: () => alert('Scanner feature coming soon'),
       },
     ];
 
@@ -715,7 +769,7 @@ function WorkerDashboard() {
           </h2>
 
           <h2 className="text-3xl font-bold mb-8 text-green-800">
-            Hello {user["First Name"]}
+            Hello {user?.['First Name'] || 'Worker'}
           </h2>
 
           <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
@@ -734,7 +788,7 @@ function WorkerDashboard() {
 
                 <button
                   onClick={card.action}
-                  className="px-5 py-2 !bg-green-600 !text-white rounded-lg !hover:bg-green-700 transition"
+                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                 >
                   Open
                 </button>
@@ -751,9 +805,8 @@ function WorkerDashboard() {
      ============================================================ */
   return (
     <div className="px-6 py-10 max-w-5xl mx-auto">
-
       <button
-        onClick={() => setView("main")}
+        onClick={() => setView('main')}
         className="mb-6 px-4 py-2 bg-green-200 text-green-800 rounded-lg hover:bg-green-300 transition"
       >
         ← Back to Worker Dashboard
@@ -767,38 +820,60 @@ function WorkerDashboard() {
         Complete your assigned fridge-related jobs.
       </p>
 
-      <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
-        <table className="w-full text-left">
-          <thead className="bg-green-100">
-            <tr>
-              <th className="px-4 py-3 font-semibold text-green-800">Job Type</th>
-              <th className="px-4 py-3 font-semibold text-green-800">Scheduled For</th>
-              <th className="px-4 py-3 font-semibold text-green-800">Location</th>
-              <th className="px-4 py-3 font-semibold text-green-800">Actions</th>
-            </tr>
-          </thead>
+      {error && <p className="text-red-600 mb-4">{error}</p>}
 
-          <tbody>
-            {requests.map((req) => (
-              <tr key={req.id} className="border-t">
-                <td className="px-4 py-3">{req.type}</td>
-                <td className="px-4 py-3">{req.scheduled}</td>
-                <td className="px-4 py-3">{req.location}</td>
-                <td className="px-4 py-3">
+      {loading ? (
+        <p className="text-gray-600">Loading requests...</p>
+      ) : requests.length === 0 ? (
+        <p className="text-gray-600">No pending requests.</p>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
+          <table className="w-full text-left">
+            <thead className="bg-green-100">
+              <tr>
+                <th className="px-7 py-5 font-semibold text-green-800">Job Type</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Scheduled For</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Location</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Notes</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Status</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {requests.map((req) => (
+                <tr key={req.id} className="border-t">
+                  <td className="px-7 py-5">{req['Type of Service'] || 'N/A'}</td>
+                  <td className="px-7 py-5">
+                    {req['Service Date']
+                      ? new Date(req['Service Date']).toLocaleDateString()
+                      : 'N/A'}
+                  </td>
+                  <td className="px-7 py-5">{req.location}</td>
+                  <td className="px-7 py-5">{req.Notes || 'None'}</td>
+                  <td className="px-7 py-5">{req.Status || 'None'}</td>
+                  <td className="px-7 py-5">
                     <button
-                      onClick={() => markComplete(req.id)}
-                      className="px-4 py-2 !bg-green-600 !text-white rounded-lg !hover:bg-green-700 transition"
+                      onClick={() => markStatus(req.SID, 'In Progress')}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      In Progress
+                    </button>
+                  </td>
+                                    <td className="px-7 py-5">
+                    <button
+                      onClick={() => markStatus(req.SID, 'Completed')}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                     >
                       Complete
                     </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-
-        </table>
-      </div>
-
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

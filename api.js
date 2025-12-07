@@ -202,7 +202,37 @@ app.put('/api/put/service/:sid', (req, res) => {
   });
 });
 
+// Mark a service request as completed.
+app.put('/api/service/:sid/:status', (req, res) => {
+  const { sid, status } = req.params;
+  console.log(sid + ' ' + status);
+  if (!sid || !status) {
+    return res.status(400).json({ error: 'Missing service ID or new status' });
+  }
 
+  // Option 1: Add a "Status" column (Recommended)
+  const db_query = `
+    UPDATE \`Service\`
+    SET \`Status\` = ?
+    WHERE \`SID\` = ?
+  `;
+
+  // Option 2: If you don't have a Status column, maybe use Condition or a boolean
+  // const db_query = `UPDATE \`Service\` SET \`Condition\` = 'completed' WHERE \`SID\` = ?`;
+
+  db.query(db_query, [status, sid], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Service request not found' });
+    }
+
+    res.json({ message: 'Job marked as completed', sid });
+  });
+});
 
 // --------- Post statements --------- //
 
@@ -217,7 +247,8 @@ app.post('/api/insert/request', (req, res) => {
         deadline_date = null,
         condition = 0,
         preferred_times = null,
-        notes
+        notes,
+        status = 'In Progress'
     } = req.body;
 
     console.log(req.body);
@@ -267,8 +298,8 @@ app.post('/api/insert/request', (req, res) => {
         const db_query = `
             INSERT INTO \`Service\`
             (\`SID\`, \`SNO\`, \`UID\`, \`Type of Service\`, \`Request Date\`, \`Service Date\`, 
-             \`Deadline Date\`, \`Condition\`, \`Preferred Times\`, \`Notes\`)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             \`Deadline Date\`, \`Condition\`, \`Preferred Times\`, \`Notes\`, \`Status\`)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
@@ -281,7 +312,8 @@ app.post('/api/insert/request', (req, res) => {
             deadline_date,
             condition,
             preferred_times,
-            notes
+            notes,
+            status
         ];
 
         db.query(db_query, values, (err, result) => {

@@ -37,7 +37,8 @@ CREATE TABLE `Service` (
   `Deadline Date` DATE NULL COMMENT 'Some schools have deadlines we need to meet',
   `Condition` ENUM('Clean', 'Dirty') NOT NULL,
   `Preferred Times` JSON NULL COMMENT 'The times the student would prefer',
-  `Notes` varchar(250)
+  `Notes` varchar(250),
+  `Status` ENUM('In Progress', 'Completed')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Fridge Information Specific to a School';
 COMMIT;
 
