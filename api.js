@@ -59,6 +59,7 @@ app.get('/api/users', (req, res) => {
 // Get user info by id.
 app.get('/api/user/:id', (req, res) => {
   const {id} = req.params;
+    console.log("Getting user: " + id);
   db.query('SELECT * FROM \`Login\` WHERE UID = ?', [id], (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
@@ -202,7 +203,7 @@ app.put('/api/put/service/:sid', (req, res) => {
   });
 });
 
-// Mark a service request as completed.
+// Change the status of a service request.
 app.put('/api/service/:sid/:status', (req, res) => {
   const { sid, status } = req.params;
   console.log(sid + ' ' + status);
@@ -210,15 +211,11 @@ app.put('/api/service/:sid/:status', (req, res) => {
     return res.status(400).json({ error: 'Missing service ID or new status' });
   }
 
-  // Option 1: Add a "Status" column (Recommended)
   const db_query = `
     UPDATE \`Service\`
     SET \`Status\` = ?
     WHERE \`SID\` = ?
   `;
-
-  // Option 2: If you don't have a Status column, maybe use Condition or a boolean
-  // const db_query = `UPDATE \`Service\` SET \`Condition\` = 'completed' WHERE \`SID\` = ?`;
 
   db.query(db_query, [status, sid], (err, result) => {
     if (err) {
@@ -233,6 +230,89 @@ app.put('/api/service/:sid/:status', (req, res) => {
     res.json({ message: 'Job marked as completed', sid });
   });
 });
+
+// Update request information.
+app.put('/api/put/service/:sid', (req, res) => {
+  const { sid } = req.params;
+    const {
+      sno,
+      uid,
+      service_type,
+      request_date,
+      service_date,
+      deadline_date,
+      condition,
+      preferred_times,
+      notes
+    } = req.body;
+
+  const db_query = `
+    UPDATE \`Service\`
+    SET 
+    \`SNO\` = ?, \`UID\` = ?, \`Type of Service\` = ?, \`Request Date\` = ?,
+    \`Service Date\` = ?, \`Deadline Date\` = ?, \`Condition\` = ?, \`Preferred Times\` = ?, \`Notes\` = ? 
+    WHERE \`SID\` = ?
+  `;
+    // Check for null values.
+  if (!sid) {
+    return res.status(400).json({
+        error: 'Missing service ID!'
+    });
+  };
+
+  const values = [
+    sno,
+    uid,
+    service_type,
+    request_date,
+    service_date,
+    deadline_date,
+    condition,
+    preferred_times,
+    notes,
+    sid
+  ]
+
+  db.query(db_query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        error: "Database update failed",
+        details: err.message });
+    }
+    res.status(200).json({
+      message: "Request updated successfully."
+    });
+  });
+});
+
+// Change the condition of a service request.
+app.put('/api/service/:sid/:condition', (req, res) => {
+  const { sid, condition } = req.params;
+  console.log(sid + ' ' + condition);
+  if (!sid || !condition) {
+    return res.status(400).json({ error: 'Missing service ID or new status' });
+  }
+
+  const db_query = `
+    UPDATE \`Service\`
+    SET \`Condition\` = ?
+    WHERE \`SID\` = ?
+  `;
+
+  db.query(db_query, [condition, sid], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Service request not found' });
+    }
+
+    res.json({ message: 'Job marked as completed', sid });
+  });
+});
+
 
 // --------- Post statements --------- //
 
