@@ -239,6 +239,33 @@ app.put('/api/service/:sid/:status', (req, res) => {
   });
 });
 
+// Change the worker of a service request.
+app.put('/api/services/:sid/:wid', (req, res) => {
+  const { sid, wid } = req.params;
+  console.log(sid + ' ' + wid);
+  if (!sid || !wid) {
+    return res.status(400).json({ error: 'Missing service ID or new workerID' });
+  }
+
+  const db_query = `
+    UPDATE \`Service\`
+    SET \`WID\` = ?
+    WHERE \`SID\` = ?`;
+
+  db.query(db_query, [wid, sid], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Service request not found' });
+    }
+
+    res.json({ message: 'WID updated', sid });
+  });
+});
+
 // Update request information.
 app.put('/api/put/service/:sid', (req, res) => {
   const { sid } = req.params;

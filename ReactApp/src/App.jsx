@@ -685,6 +685,8 @@ function WorkerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const WID = user["UID"];
+
   useEffect(() => {
     const loadRequests = async () => {
       setLoading(true);
@@ -746,8 +748,11 @@ function WorkerDashboard() {
         console.log("enriched:");
         console.log(enriched);
 
-        setRequests(enriched);
-        console.log(enriched);
+        const filteredRequests = enriched.filter((req) => req.WID === WID);
+
+        setRequests(filteredRequests);
+        //setRequests(enriched);
+        console.log(filteredRequests);
       } catch (err) {
         console.error('Error loading service requests:', err);
         setError('Failed to load requests. Please try again.');
@@ -975,6 +980,7 @@ function LiaisonDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [workers, setWorkers] = useState(null);
+  const [selectedWorkers, setSelectedWorkers] = useState({});
 
   if (!user) {
     return (
@@ -1104,6 +1110,28 @@ function LiaisonDashboard() {
     return out;
   }, [requests]);
 
+  async function updateWorkers(SID, WID) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/services/${SID}/${WID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) throw new Error("Failed to update worker");
+
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.SID === SID ? { ...r, WID: WID } : r
+      )
+    );
+
+    alert("Worker assigned successfully!");
+  } catch (err) {
+    console.error("Failed to update:", err);
+    alert("Failed to assign worker.");
+  }
+}
+
   /* ============================================================
      MAIN DASHBOARD VIEW
      ============================================================ */
@@ -1203,8 +1231,9 @@ function LiaisonDashboard() {
               <th className="px-4 py-3 font-semibold text-purple-800">Job Type</th>
               <th className="px-4 py-3 font-semibold text-purple-800">Job ID</th>
               <th className="px-4 py-3 font-semibold text-purple-800">Building</th>
-              <th className="px-4 py-3 font-semibold text-purple-800">Deadline</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Scheduled For</th>
               <th className="px-4 py-3 font-semibold text-purple-800">Worker</th>
+              <th className="px-4 py-3 font-semibold text-purple-800"></th>
               <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
             </tr>
           </thead>
@@ -1215,17 +1244,33 @@ function LiaisonDashboard() {
                 <td className="px-4 py-3">{r["Type of Service"]}</td>
                 <td className="px-4 py-3">{r["SID"]}</td>
                 <td className="px-4 py-3">{r["location"]}</td>
-                <td className="px-4 py-3">{r["Deadline Date"]}</td>
                 <td className="px-4 py-3">
-                  <select className="px-4 py-2 border rounded-lg">
+                  {r['Service Date']
+                      ? new Date(r['Service Date']).toLocaleDateString()
+                      : 'N/A'}
+                </td>
+                <td className="px-4 py-3">
+                  <select className="px-4 py-2 border rounded-lg" 
+                  value={selectedWorkers[r.SID || r.WID]} 
+                  onChange={(e) => setSelectedWorkers(prev => ({
+                  ...prev,
+                  [r.SID]: e.target.value
+                  }))}>
                     <option value="">Select a worker</option>
                       {workers.map(worker => (
                       <option key={worker.UID} value={worker.UID}>
-                        {worker["First Name"]} {worker["Last Name"]}
+                        {worker["Last Name"]}, {worker["First Name"]}
                       </option>
                       ))}
                   </select>
-                </td>
+                  </td>
+                  <td>
+                  <button className="px-4 py-2 bg-blue-400 text-white rounded-lg hover:bg-blue-700 transition-colors" 
+                    onClick={() => updateWorkers(r["SID"], selectedWorkers[r.SID])}
+                    disabled={!selectedWorkers[r.SID]}>
+                      Save
+                    </button>
+                  </td>
                 <td
                   className={`px-4 py-3 font-semibold ${
                     r["Status"] === "Completed"
@@ -1266,6 +1311,7 @@ function LiaisonDashboard() {
     </div>
   );
 }
+
 
 function CampusHousingDashboard() {
   const { user } = useContext(UserContext);
