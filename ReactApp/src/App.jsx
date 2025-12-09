@@ -727,7 +727,7 @@ function WorkerDashboard() {
 
         // Enrich requests with location
         const enriched = data.map((req) => {
-          const userData = userMap[req.UID];
+          const userData = mappedUsers[req.UID];
           const location = userData?.Dorm && userData?.Room
             ? `${userData.Dorm} ${userData.Room}`
             : 'Location N/A';
