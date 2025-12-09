@@ -66,6 +66,14 @@ app.get('/api/user/:id', (req, res) => {
   });
 });
 
+// Get all workers
+app.get('/api/users/workers', (req, res) => {
+  db.query('SELECT * FROM \`Login\` WHERE ROLE = "Worker"', (err, rows) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(rows);
+  });
+});
+
 
 // Get user info by login information.
 app.get('/api/user/:email/:pass', (req, res) => {

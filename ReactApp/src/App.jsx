@@ -5,7 +5,19 @@ const UserContext = createContext();
 
 //holds current user info
 function UserProvider({ children }) {
-const [user, setUser] = useState(null); // user info will be stored here
+const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+}); // user info will be stored here
+
+useEffect(() => {
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user)) 
+  }
+  else {
+    localStorage.removeItem('user');
+  }
+}, [user]);
 
 return (
   <UserContext.Provider value={{ user, setUser }}>
@@ -223,6 +235,22 @@ return (
         />
       </div>
     )}
+
+    {role === "Liaison" && 
+      <div className="flex flex-col">
+        <label className="block mb-2 font-medium">School:</label>
+        <select
+        value={schoolID}
+        onChange={(e) => setSchoolID(e.target.value)}
+        className="border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <option value="">Select School</option>
+          <option value="1001">University of Kentucky</option>
+          <option value="1002">University of Louisville</option>
+          <option value="1003">Western Kentucky University</option>
+          <option value="1004">Eastern Kentucky University</option>
+        </select>
+      </div>
+    }
  
     <button
       type="submit"
@@ -941,30 +969,140 @@ const changeStatus = async (id, status) => {
 
 
 function LiaisonDashboard() {
-   const { user } = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const [view, setView] = useState("main"); 
+  const [requests, setRequests] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [workers, setWorkers] = useState(null);
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  const SCHOOLS = {
+    1001: "University of Kentucky",
+    1002: "University of Louisville",
+    1003: "Western Kentucky University",
+    1004: "Eastern Kentucky University"
+  }
+  const campusID = user["School ID"];
+  const schoolName = SCHOOLS[campusID];
+
   // main = card view, schools = schools submenu
+
+
+    useEffect(() => {
+      const loadData = async() => {
+        setLoading(true);
+        setError(null);
+        try {
+          const res = await fetch('http://localhost:5000/api/service/', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch request data');
+        const data = await res.json();
+        const filteredData = data?.filter(req => req.SNO === campusID) || [];
+
+        const uniqueUIDs = [...new Set(data.map((req) => req.UID))];
+
+        // Fetch all users, but don't fail the whole thing if one is missing
+        const userPromises = uniqueUIDs.map((uid) =>
+          fetch(`http://localhost:5000/api/user/${uid}`)
+            .then((r) => {
+              if (!r.ok) {
+                console.warn(`User not found for UID: ${uid} (${r.status})`);
+                return null; // Mark as missing instead of throwing
+              }
+              return r.json();
+            })
+            .catch((err) => {
+              console.warn(`Failed to fetch user ${uid}:`, err);
+              return null;
+            })
+        );
+
+        
+        // Fetch workers
+        const workersRes = await fetch('http://localhost:5000/api/users/workers');
+        if (!workersRes.ok) throw new Error('Failed to fetch workers');
+        const workerData = await workersRes.json();
+        setWorkers(workerData);
+        console.log('Workers:', workerData);
+
+        const userResults = await Promise.allSettled(userPromises);
+        
+        console.log("User results:");
+        console.log(userResults);
+        // Extract successfully fetched users
+        const successfulUsers = userResults
+          .filter((r) => r.status === "fulfilled" && r.value !== null)
+          .map((r) => r.value[0]);
+
+
+        const userMap = Object.fromEntries(
+          successfulUsers.map((u) => [u.UID, u])
+        );
+
+
+        console.log("Successful users:");
+        console.log(successfulUsers);
+
+        // Enrich requests with location
+        const enriched = filteredData.map((req) => {
+          const userData = userMap[req.UID];
+          const location = userData?.Dorm && userData?.Room
+            ? `${userData.Dorm} ${userData.Room}`
+            : 'Location N/A';
+          return { ...req, location };
+        });
+        
+        console.log("enriched:");
+        console.log(enriched);
+
+        setRequests(enriched);
+        console.log(enriched);
+      } catch (err) {
+        console.error('Error loading service requests:', err);
+        setError('Failed to load requests. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+    }, []);
+
+    useEffect(() => {
+      console.log('Requests updated:', requests)
+    }, [requests])
 
   /* ============================================================
      SAMPLE JOB DATA (replace with real DB later)
      ============================================================ */
-  const jobs = [
-    { id: 1, type: "Fridge Delivery", scheduled: "2025-03-01", status: "Completed" },
-    { id: 2, type: "Fridge Maintenance", scheduled: "2025-03-10", status: "Pending" },
-    { id: 3, type: "Fridge Pickup", scheduled: "2025-03-15", status: "Completed" },
-  ];
 
   const countsByType = useMemo(() => {
+    if(!requests) { return {} }
     const out = {};
-    jobs.forEach(j => { out[j.type] = (out[j.type] || 0) + 1; });
+    requests.forEach(j => { 
+      const type = j["Type of Service"]
+      out[type] = (out[type] || 0) + 1; });
     return out;
-  }, [jobs]);
+  }, [requests]);
 
   const countsByStatus = useMemo(() => {
+    if(!requests) { return {} }
     const out = {};
-    jobs.forEach(j => { out[j.status] = (out[j.status] || 0) + 1; });
+    requests.forEach(j => { 
+      const status = j["Status"]
+      out[status] = (out[status] || 0) + 1; });
     return out;
-  }, [jobs]);
+  }, [requests]);
 
   /* ============================================================
      MAIN DASHBOARD VIEW
@@ -980,6 +1118,10 @@ function LiaisonDashboard() {
 
           <h2 className="text-3xl font-bold mb-8 text-purple-800">
             Hello {user["First Name"]}
+          </h2>
+
+           <h2 className="text-2xl font-bold mb-8 text-black-800">
+            {schoolName}
           </h2>
 
           <p className="text-gray-600 mb-8">
@@ -1051,6 +1193,7 @@ function LiaisonDashboard() {
       <p className="text-gray-600 mb-8">
         Overview of scheduled school jobs and completion status.
       </p>
+      
 
       {/* TABLE */}
       <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
@@ -1058,24 +1201,39 @@ function LiaisonDashboard() {
           <thead className="bg-purple-100">
             <tr>
               <th className="px-4 py-3 font-semibold text-purple-800">Job Type</th>
-              <th className="px-4 py-3 font-semibold text-purple-800">Scheduled For</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Job ID</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Building</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Deadline</th>
+              <th className="px-4 py-3 font-semibold text-purple-800">Worker</th>
               <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
             </tr>
           </thead>
 
           <tbody>
-            {jobs.map(job => (
-              <tr key={job.id} className="border-t">
-                <td className="px-4 py-3">{job.type}</td>
-                <td className="px-4 py-3">{job.scheduled}</td>
+            {requests.map(r => (
+              <tr key={r["SID"]} className="border-t">
+                <td className="px-4 py-3">{r["Type of Service"]}</td>
+                <td className="px-4 py-3">{r["SID"]}</td>
+                <td className="px-4 py-3">{r["location"]}</td>
+                <td className="px-4 py-3">{r["Deadline Date"]}</td>
+                <td className="px-4 py-3">
+                  <select className="px-4 py-2 border rounded-lg">
+                    <option value="">Select a worker</option>
+                      {workers.map(worker => (
+                      <option key={worker.UID} value={worker.UID}>
+                        {worker["First Name"]} {worker["Last Name"]}
+                      </option>
+                      ))}
+                  </select>
+                </td>
                 <td
                   className={`px-4 py-3 font-semibold ${
-                    job.status === "Completed"
+                    r["Status"] === "Completed"
                       ? "text-green-600"
                       : "text-red-600"
                   }`}
                 >
-                  {job.status}
+                  {r["Status"]}
                 </td>
               </tr>
             ))}
@@ -1188,7 +1346,7 @@ function App() {
         </div>
 
         <h1 className="text-lg sm:text-xl font-semibold tracking-wide" style={{ padding: "12px" }}>
-          Test App
+          Minifridge App
         </h1>
       </nav>
 

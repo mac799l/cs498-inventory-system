@@ -31,6 +31,7 @@ CREATE TABLE `Service` (
   `SID` int(10) NOT NULL COMMENT 'SERVICE ID',
   `SNO` int(4) NOT NULL COMMENT 'School Number',
   `UID` int(12) NOT NULL,
+  `WID` int(12) NOT NULL DEFAULT 0,
   `Type of Service` ENUM('Pickup','Maintenance' ,'Delivery') NOT NULL,
   `Request Date` DATE NOT NULL,
   `Service Date` DATE NOT NULL,
