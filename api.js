@@ -325,6 +325,7 @@ app.put('/api/service/:sid/:condition', (req, res) => {
 // --------- Post statements --------- //
 
 // Insert a new request.
+// Insert a new request.
 app.post('/api/insert/request', (req, res) => {
     const {
         uid,
@@ -342,9 +343,9 @@ app.post('/api/insert/request', (req, res) => {
     console.log(req.body);
 
     // Validate required fields first
-    if (!uid || !sno || !service_type || !service_date) {
+    if (!uid || !sno || !service_type ) {
         return res.status(400).json({
-            error: 'Missing one or more required fields: UID, SNO, Type of Service, Service Date'
+            error: 'Missing one or more required fields: UID, SNO, Type of Service'
         });
     }
 
@@ -422,6 +423,7 @@ app.post('/api/insert/request', (req, res) => {
         });
     }
 });
+
 
 // Insert a new user.
 app.post('/api/insert/user', async (req, res) => {
