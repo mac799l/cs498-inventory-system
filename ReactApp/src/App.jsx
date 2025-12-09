@@ -822,17 +822,7 @@ const changeStatus = async (id, status) => {
         title: 'Fridge Request',
         desc: 'View and complete assigned fridge-related tasks.',
         action: () => setView('requests'),
-      },
-      {
-        title: 'Log Dirty Fridge',
-        desc: 'Report a fridge that needs cleaning or removal.',
-        action: () => alert('Open Dirty Fridge form'),
-      },
-      {
-        title: 'Fridge Scanner (Coming Soon)',
-        desc: 'Scan fridge barcodes to update inventory instantly.',
-        action: () => alert('Scanner feature coming soon'),
-      },
+      }
     ];
 
     return (
@@ -848,11 +838,11 @@ const changeStatus = async (id, status) => {
 
           <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 max-w-5xl">
             {cards.map((card) => (
               <div
                 key={card.title}
-                className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all"
+                className="p-6 !bg-white !rounded-2xl !shadow-md border !hover:shadow-lg transition-all"
               >
                 <h3 className="text-2xl font-semibold text-green-700 mb-3">
                   {card.title}
@@ -862,7 +852,7 @@ const changeStatus = async (id, status) => {
 
                 <button
                   onClick={card.action}
-                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  className="px-5 py-2 !bg-green-600 !text-white !rounded-lg !hover:bg-green-700 !transition"
                 >
                   Open
                 </button>
@@ -1115,7 +1105,7 @@ function LiaisonDashboard() {
           <p className="text-gray-600 mb-8">
             Manage school metrics and worker activity.
           </p>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 max-w-5xl">
             <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
               <h3 className="text-2xl font-semibold text-purple-700 mb-3">
                 Schools Dashboard
@@ -1127,28 +1117,6 @@ function LiaisonDashboard() {
                 onClick={() => setView("schools")}
                 className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition"
               >
-                Open
-              </button>
-            </div>
-            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
-              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
-                Worker Metrics
-              </h3>
-              <p className="text-gray-600 mb-5">
-                Track worker hours, payment status, and task performance.
-              </p>
-              <button className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition">
-                Open
-              </button>
-            </div>
-            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
-              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
-                Generate Reports
-              </h3>
-              <p className="text-gray-600 mb-5">
-                Export summarized performance and maintenance data.
-              </p>
-              <button className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition">
                 Open
               </button>
             </div>
