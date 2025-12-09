@@ -527,20 +527,6 @@ const handleSubmit = (e) => {
             />
           </div>
 
-          {/* Service Date */}
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              Service Date
-            </label>
-            <input
-              type="date"
-              value={serviceDate}
-              onChange={(e) => setServiceDate(e.target.value)}
-              required
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-
           {/* Deadline Date */}
           <div>
             <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -555,6 +541,7 @@ const handleSubmit = (e) => {
           </div>
 
           {/* Condition */}
+          {activeForm === "Pickup" && (
           <div>
             <label className="block text-gray-700 text-sm font-bold mb-2">
               Condition
@@ -568,6 +555,7 @@ const handleSubmit = (e) => {
               <option value="Dirty">Dirty</option>
             </select>
           </div>
+          )}
 
           {/* Preferred Times */}
           <div>
