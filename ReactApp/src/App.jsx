@@ -673,6 +673,8 @@ function WorkerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+   const [userMap, setUserMap] = useState({});
+
   useEffect(() => {
     const loadRequests = async () => {
       setLoading(true);
@@ -714,10 +716,11 @@ function WorkerDashboard() {
           .map((r) => r.value[0]);
 
 
-        const userMap = Object.fromEntries(
+        const mappedUsers = Object.fromEntries(
           successfulUsers.map((u) => [u.UID, u])
         );
 
+        setUserMap(mappedUsers);
 
         console.log("Successful users:");
         console.log(successfulUsers);
@@ -809,9 +812,40 @@ const changeStatus = async (id, status) => {
     console.error("Failed to update:", err);
     alert("Failed to update job status.");
   }
+
+  try {
+  // Find the exact service request being updated
+  const selectedRequest = requests.find((r) => r.SID === id);
+
+  if (!selectedRequest) {
+    console.warn("Could not find matching request to log fridge tracker record.");
+    return;
+  }
+
+  const studentInfo = userMap[selectedRequest.UID];
+
+  const res = await fetch(`http://localhost:5000/api/fridge_tracker/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      Owner: selectedRequest.UID,
+      School: selectedRequest.SNO,
+      Location: studentInfo?.Dorm,
+      Moved: new Date().toISOString(),
+      Room: studentInfo?.Room,
+      Status: selectedRequest.Condition
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to update fridge_tracker");
+  console.log("Fridge tracker entry saved successfully");
+
+  } catch (err) {
+    console.error("Failed to update fridge tracker:", err);
+    alert("Failed to update fridge tracker status.");
+  }
+
 };
-
-
 
   /* ============================================================
      MAIN WORKER DASHBOARD VIEW
@@ -906,7 +940,9 @@ const changeStatus = async (id, status) => {
             </thead>
 
             <tbody>
-              {requests.map((req) => (
+              {requests
+              .filter((req) => req.Status !== "Completed")
+              .map((req) => (
                 <tr key={req.id} className="border-t">
                   <td className="px-7 py-5">{req['Type of Service'] || 'N/A'}</td>
                   <td className="px-7 py-5">
