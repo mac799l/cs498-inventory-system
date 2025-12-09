@@ -527,20 +527,6 @@ const handleSubmit = (e) => {
             />
           </div>
 
-          {/* Service Date */}
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              Service Date
-            </label>
-            <input
-              type="date"
-              value={serviceDate}
-              onChange={(e) => setServiceDate(e.target.value)}
-              required
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-
           {/* Deadline Date */}
           <div>
             <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -555,6 +541,7 @@ const handleSubmit = (e) => {
           </div>
 
           {/* Condition */}
+          {activeForm === "Pickup" && (
           <div>
             <label className="block text-gray-700 text-sm font-bold mb-2">
               Condition
@@ -568,6 +555,7 @@ const handleSubmit = (e) => {
               <option value="Dirty">Dirty</option>
             </select>
           </div>
+          )}
 
           {/* Preferred Times */}
           <div>
@@ -839,17 +827,7 @@ const changeStatus = async (id, status) => {
         title: 'Fridge Request',
         desc: 'View and complete assigned fridge-related tasks.',
         action: () => setView('requests'),
-      },
-      {
-        title: 'Log Dirty Fridge',
-        desc: 'Report a fridge that needs cleaning or removal.',
-        action: () => alert('Open Dirty Fridge form'),
-      },
-      {
-        title: 'Fridge Scanner (Coming Soon)',
-        desc: 'Scan fridge barcodes to update inventory instantly.',
-        action: () => alert('Scanner feature coming soon'),
-      },
+      }
     ];
 
     return (
@@ -865,11 +843,11 @@ const changeStatus = async (id, status) => {
 
           <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 max-w-5xl">
             {cards.map((card) => (
               <div
                 key={card.title}
-                className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all"
+                className="p-6 !bg-white !rounded-2xl !shadow-md border !hover:shadow-lg transition-all"
               >
                 <h3 className="text-2xl font-semibold text-green-700 mb-3">
                   {card.title}
@@ -879,7 +857,7 @@ const changeStatus = async (id, status) => {
 
                 <button
                   onClick={card.action}
-                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  className="px-5 py-2 !bg-green-600 !text-white !rounded-lg !hover:bg-green-700 !transition"
                 >
                   Open
                 </button>
@@ -981,7 +959,8 @@ function LiaisonDashboard() {
   const [error, setError] = useState(null);
   const [workers, setWorkers] = useState(null);
   const [selectedWorkers, setSelectedWorkers] = useState({});
-
+  const [statusFilter, setStatusFilter] = useState("All"); // NEW: Filter state
+  
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
@@ -989,35 +968,32 @@ function LiaisonDashboard() {
       </div>
     );
   }
-
+  
   const SCHOOLS = {
     1001: "University of Kentucky",
     1002: "University of Louisville",
     1003: "Western Kentucky University",
     1004: "Eastern Kentucky University"
   }
+  
   const campusID = user["School ID"];
   const schoolName = SCHOOLS[campusID];
-
+  
   // main = card view, schools = schools submenu
-
-
-    useEffect(() => {
-      const loadData = async() => {
-        setLoading(true);
-        setError(null);
-        try {
-          const res = await fetch('http://localhost:5000/api/service/', {
+  useEffect(() => {
+    const loadData = async() => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('http://localhost:5000/api/service/', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
-
         if (!res.ok) throw new Error('Failed to fetch request data');
         const data = await res.json();
         const filteredData = data?.filter(req => req.SNO === campusID) || [];
-
         const uniqueUIDs = [...new Set(data.map((req) => req.UID))];
-
+        
         // Fetch all users, but don't fail the whole thing if one is missing
         const userPromises = uniqueUIDs.map((uid) =>
           fetch(`http://localhost:5000/api/user/${uid}`)
@@ -1033,7 +1009,6 @@ function LiaisonDashboard() {
               return null;
             })
         );
-
         
         // Fetch workers
         const workersRes = await fetch('http://localhost:5000/api/users/workers');
@@ -1041,25 +1016,23 @@ function LiaisonDashboard() {
         const workerData = await workersRes.json();
         setWorkers(workerData);
         console.log('Workers:', workerData);
-
+        
         const userResults = await Promise.allSettled(userPromises);
         
         console.log("User results:");
         console.log(userResults);
+        
         // Extract successfully fetched users
         const successfulUsers = userResults
           .filter((r) => r.status === "fulfilled" && r.value !== null)
           .map((r) => r.value[0]);
-
-
         const userMap = Object.fromEntries(
           successfulUsers.map((u) => [u.UID, u])
         );
-
-
+        
         console.log("Successful users:");
         console.log(successfulUsers);
-
+        
         // Enrich requests with location
         const enriched = filteredData.map((req) => {
           const userData = userMap[req.UID];
@@ -1071,7 +1044,6 @@ function LiaisonDashboard() {
         
         console.log("enriched:");
         console.log(enriched);
-
         setRequests(enriched);
         console.log(enriched);
       } catch (err) {
@@ -1082,32 +1054,44 @@ function LiaisonDashboard() {
       }
     };
     loadData();
-    }, []);
-
-    useEffect(() => {
-      console.log('Requests updated:', requests)
-    }, [requests])
-
+  }, []);
+  
+  useEffect(() => {
+    console.log('Requests updated:', requests)
+  }, [requests])
+  
+  // NEW: Filter requests based on selected status
+  const filteredRequests = useMemo(() => {
+    if (!requests) return [];
+    if (statusFilter === "All") {
+      return requests;
+    }
+    return requests.filter(req => req["Status"] === statusFilter);
+  }, [statusFilter, requests]);
+  
   /* ============================================================
-     SAMPLE JOB DATA (replace with real DB later)
+     AGGREGATE CALCULATIONS (using filtered data)
      ============================================================ */
-
   const countsByType = useMemo(() => {
-    if(!requests) { return {} }
+    if (!filteredRequests) { return {} }
     const out = {};
-    requests.forEach(j => { 
+    filteredRequests.forEach(j => { 
       const type = j["Type of Service"]
-      out[type] = (out[type] || 0) + 1; });
+      out[type] = (out[type] || 0) + 1; 
+    });
     return out;
-  }, [requests]);
-
+  }, [filteredRequests]);
+  
   const countsByStatus = useMemo(() => {
-    if(!requests) { return {} }
+    if (!filteredRequests) { return {} }
     const out = {};
-    requests.forEach(j => { 
+    filteredRequests.forEach(j => { 
       const status = j["Status"]
-      out[status] = (out[status] || 0) + 1; });
+      out[status] = (out[status] || 0) + 1; 
+    });
     return out;
+  }, [filteredRequests]);
+  
   }, [requests]);
 
   async function updateWorkers(SID, WID) {
@@ -1139,24 +1123,19 @@ function LiaisonDashboard() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
         <div className="px-6 py-10 sm:pl-12">
-
           <h2 className="text-4xl font-bold text-purple-700 mb-6">
             Liaison Dashboard
           </h2>
-
           <h2 className="text-3xl font-bold mb-8 text-purple-800">
             Hello {user["First Name"]}
           </h2>
-
-           <h2 className="text-2xl font-bold mb-8 text-black-800">
+          <h2 className="text-2xl font-bold mb-8 text-black-800">
             {schoolName}
           </h2>
-
           <p className="text-gray-600 mb-8">
             Manage school metrics and worker activity.
           </p>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 max-w-5xl">
             <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
               <h3 className="text-2xl font-semibold text-purple-700 mb-3">
                 Schools Dashboard
@@ -1171,59 +1150,123 @@ function LiaisonDashboard() {
                 Open
               </button>
             </div>
-
-            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
-              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
-                Worker Metrics
-              </h3>
-              <p className="text-gray-600 mb-5">
-                Track worker hours, payment status, and task performance.
-              </p>
-              <button className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition">
-                Open
-              </button>
-            </div>
-
-            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
-              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
-                Generate Reports
-              </h3>
-              <p className="text-gray-600 mb-5">
-                Export summarized performance and maintenance data.
-              </p>
-              <button className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition">
-                Open
-              </button>
-            </div>
           </div>
-
         </div>
       </div>
     );
   }
-
+  
   /* ============================================================
-     SCHOOLS DASHBOARD SUBMENU VIEW
+     SCHOOLS DASHBOARD SUBMENU VIEW (WITH FILTER)
      ============================================================ */
   return (
     <div className="px-6 py-10 max-w-5xl mx-auto">
-
       <button
         onClick={() => setView("main")}
         className="mb-6 px-4 py-2 bg-purple-200 text-purple-800 rounded-lg hover:bg-purple-300 transition"
       >
         ← Back to Liaison Dashboard
       </button>
-
+      
       <h1 className="text-4xl font-bold text-purple-700 mb-6">
         Schools Dashboard
       </h1>
-      <p className="text-gray-600 mb-8">
+      <p className="text-gray-600 mb-4">
         Overview of scheduled school jobs and completion status.
       </p>
       
-
+      {/* NEW: FILTER DROPDOWN */}
+      <div className="mb-6 flex items-center gap-3">
+        <label htmlFor="statusFilter" className="font-semibold text-purple-700">
+          Filter by Status:
+        </label>
+        <select
+          id="statusFilter"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          <option value="All">All</option>
+          <option value="Completed">Completed</option>
+          <option value="In Progress">In Progress</option>
+        </select>
+        
+        {/* Show count of filtered results */}
+        <span className="text-gray-600">
+          ({filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'})
+        </span>
+      </div>
+      
+      {/* LOADING/ERROR STATES */}
+      {loading && (
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading requests...</p>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          {error}
+        </div>
+      )}
+      
       {/* TABLE */}
+      {!loading && !error && requests && (
+        <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
+          <table className="w-full text-left">
+            <thead className="bg-purple-100">
+              <tr>
+                <th className="px-4 py-3 font-semibold text-purple-800">Job Type</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Job ID</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Building</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Deadline</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Worker</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRequests.length > 0 ? (
+                filteredRequests.map(r => (
+                  <tr key={r["SID"]} className="border-t">
+                    <td className="px-4 py-3">{r["Type of Service"]}</td>
+                    <td className="px-4 py-3">{r["SID"]}</td>
+                    <td className="px-4 py-3">{r["location"]}</td>
+                    <td className="px-4 py-3">{r["Deadline Date"]}</td>
+                    <td className="px-4 py-3">
+                      <select className="px-4 py-2 border rounded-lg">
+                        <option value="">Select a worker</option>
+                        {workers && workers.map(worker => (
+                          <option key={worker.UID} value={worker.UID}>
+                            {worker["First Name"]} {worker["Last Name"]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td
+                      className={`px-4 py-3 font-semibold ${
+                        r["Status"] === "Completed"
+                          ? "text-green-600"
+                          : r["Status"] === "In Progress"
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {r["Status"]}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                    No requests found with status "{statusFilter}"
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+      
       <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
         <table className="w-full text-left">
           <thead className="bg-purple-100">
@@ -1287,27 +1330,35 @@ function LiaisonDashboard() {
       </div>
 
       {/* AGGREGATES */}
-      <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        <div className="p-6 bg-white rounded-2xl shadow border">
-          <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Type</h2>
-          {Object.entries(countsByType).map(([type, count]) => (
-            <p key={type} className="text-gray-700">
-              {type}: <span className="font-bold">{count}</span>
-            </p>
-          ))}
+      {!loading && !error && requests && (
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 bg-white rounded-2xl shadow border">
+            <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Type</h2>
+            {Object.keys(countsByType).length > 0 ? (
+              Object.entries(countsByType).map(([type, count]) => (
+                <p key={type} className="text-gray-700">
+                  {type}: <span className="font-bold">{count}</span>
+                </p>
+              ))
+            ) : (
+              <p className="text-gray-500">No data available</p>
+            )}
+          </div>
+          
+          <div className="p-6 bg-white rounded-2xl shadow border">
+            <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Status</h2>
+            {Object.keys(countsByStatus).length > 0 ? (
+              Object.entries(countsByStatus).map(([status, count]) => (
+                <p key={status} className="text-gray-700">
+                  {status}: <span className="font-bold">{count}</span>
+                </p>
+              ))
+            ) : (
+              <p className="text-gray-500">No data available</p>
+            )}
+          </div>
         </div>
-
-        <div className="p-6 bg-white rounded-2xl shadow border">
-          <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Status</h2>
-          {Object.entries(countsByStatus).map(([status, count]) => (
-            <p key={status} className="text-gray-700">
-              {status}: <span className="font-bold">{count}</span>
-            </p>
-          ))}
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }

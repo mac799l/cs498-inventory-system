@@ -34,9 +34,9 @@ CREATE TABLE `Service` (
   `WID` int(12) NOT NULL DEFAULT 0,
   `Type of Service` ENUM('Pickup','Maintenance' ,'Delivery') NOT NULL,
   `Request Date` DATE NOT NULL,
-  `Service Date` DATE NOT NULL,
+  `Service Date` DATE NULL,
   `Deadline Date` DATE NULL COMMENT 'Some schools have deadlines we need to meet',
-  `Condition` ENUM('Clean', 'Dirty') NOT NULL,
+  `Condition` ENUM('Clean', 'Dirty') NULL,
   `Preferred Times` JSON NULL COMMENT 'The times the student would prefer',
   `Notes` varchar(250),
   `Status` ENUM('In Progress', 'Completed')
