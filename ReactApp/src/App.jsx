@@ -990,6 +990,7 @@ function LiaisonDashboard() {
   const [error, setError] = useState(null);
   const [workers, setWorkers] = useState(null);
   const [statusFilter, setStatusFilter] = useState("All"); // NEW: Filter state
+  const [selectedWorkers, setSelectedWorkers] = useState({});
   
   if (!user) {
     return (
@@ -1090,7 +1091,7 @@ function LiaisonDashboard() {
     console.log('Requests updated:', requests)
   }, [requests])
   
-  // NEW: Filter requests based on selected status
+  
   const filteredRequests = useMemo(() => {
     if (!requests) return [];
     if (statusFilter === "All") {
@@ -1121,6 +1122,31 @@ function LiaisonDashboard() {
     });
     return out;
   }, [filteredRequests]);
+
+  async function updateWorkers(SID, WID) {
+  try {
+
+    const workerID = parseInt(WID, 10);
+    const res = await fetch(`http://localhost:5000/api/services/${SID}/${workerID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) throw new Error("Failed to update worker");
+
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.SID === SID ? { ...r, WID: WID } : r
+      )
+    );
+
+    alert("Worker assigned successfully!");
+  } catch (err) {
+    console.error("Failed to update:", err);
+    alert("Failed to assign worker.");
+  }
+}
+
   
   /* ============================================================
      MAIN DASHBOARD VIEW
@@ -1181,7 +1207,6 @@ function LiaisonDashboard() {
         Overview of scheduled school jobs and completion status.
       </p>
       
-      {/* NEW: FILTER DROPDOWN */}
       <div className="mb-6 flex items-center gap-3">
         <label htmlFor="statusFilter" className="font-semibold text-purple-700">
           Filter by Status:
@@ -1227,6 +1252,7 @@ function LiaisonDashboard() {
                 <th className="px-4 py-3 font-semibold text-purple-800">Building</th>
                 <th className="px-4 py-3 font-semibold text-purple-800">Deadline</th>
                 <th className="px-4 py-3 font-semibold text-purple-800">Worker</th>
+                <th className="px-4 py-3 font-semibold text-purple-800"></th>
                 <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
               </tr>
             </thead>
@@ -1237,9 +1263,13 @@ function LiaisonDashboard() {
                     <td className="px-4 py-3">{r["Type of Service"]}</td>
                     <td className="px-4 py-3">{r["SID"]}</td>
                     <td className="px-4 py-3">{r["location"]}</td>
-                    <td className="px-4 py-3">{r["Deadline Date"]}</td>
+                    <td className="px-4 py-3">{r["Deadline Date"] ? new Date(r['Deadline Date']).toLocaleDateString()
+                      : 'N/A'}</td>
                     <td className="px-4 py-3">
-                      <select className="px-4 py-2 border rounded-lg">
+                      <select className="px-4 py-2 border rounded-lg" 
+                      value={selectedWorkers[r.SID || r.WID]} 
+                      onChange={(e) => setSelectedWorkers(prev => ({         
+                      ...prev, [r.SID]: e.target.value}))}> 
                         <option value="">Select a worker</option>
                         {workers && workers.map(worker => (
                           <option key={worker.UID} value={worker.UID}>
@@ -1247,6 +1277,11 @@ function LiaisonDashboard() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td>
+                      <button className="px-4 py-2 bg-blue-400 text-white rounded-lg hover:bg-blue-700 transition-colors" 
+                        onClick={() => updateWorkers(r["SID"], selectedWorkers[r.SID])}
+                        disabled={!selectedWorkers[r.SID]}>Save</button>
                     </td>
                     <td
                       className={`px-4 py-3 font-semibold ${
