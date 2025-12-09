@@ -1091,8 +1091,6 @@ function LiaisonDashboard() {
     });
     return out;
   }, [filteredRequests]);
-  
-  }, [requests]);
 
   async function updateWorkers(SID, WID) {
   try {
