@@ -1123,20 +1123,29 @@ function LiaisonDashboard() {
     return out;
   }, [filteredRequests]);
 
-  async function updateWorkers(SID, WID) {
+async function updateWorkers(SID, WID) {
   try {
-
     const workerID = parseInt(WID, 10);
-    const res = await fetch(`http://localhost:5000/api/service/${SID}/${workerID}`, {
+
+    const res = await fetch(`http://localhost:5000/api/service/${SID}/set/${workerID}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
     });
 
     if (!res.ok) throw new Error("Failed to update worker");
 
+  
+    const newWorker = workers.find(w => w.UID === workerID);
+
     setRequests((prev) =>
       prev.map((r) =>
-        r.SID === SID ? { ...r, WID: WID } : r
+        r.SID === SID
+          ? {
+              ...r,
+              WID: workerID,                       
+              workerName: newWorker                
+            }
+          : r
       )
     );
 
@@ -1146,7 +1155,6 @@ function LiaisonDashboard() {
     alert("Failed to assign worker.");
   }
 }
-
   
   /* ============================================================
      MAIN DASHBOARD VIEW
@@ -1251,7 +1259,8 @@ function LiaisonDashboard() {
                 <th className="px-4 py-3 font-semibold text-purple-800">Job ID</th>
                 <th className="px-4 py-3 font-semibold text-purple-800">Building</th>
                 <th className="px-4 py-3 font-semibold text-purple-800">Deadline</th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Worker</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Current Worker</th>
+                <th className="px-4 py-3 font-semibold text-purple-800">Workers</th>
                 <th className="px-4 py-3 font-semibold text-purple-800"></th>
                 <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
               </tr>
@@ -1265,6 +1274,12 @@ function LiaisonDashboard() {
                     <td className="px-4 py-3">{r["location"]}</td>
                     <td className="px-4 py-3">{r["Deadline Date"] ? new Date(r['Deadline Date']).toLocaleDateString()
                       : 'N/A'}</td>
+                    <td className="px-4 py-3">
+                    {(() => {
+                      const worker = workers?.find(w => w.UID === r.WID);
+                      return worker ? `${worker["First Name"]} ${worker["Last Name"]}` : "Unassigned";
+                    })()}
+                    </td>
                     <td className="px-4 py-3">
                       <select className="px-4 py-2 border rounded-lg" 
                       value={selectedWorkers[r.SID || r.WID]} 

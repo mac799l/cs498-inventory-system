@@ -321,12 +321,12 @@ app.put('/api/service/:sid/:condition', (req, res) => {
   });
 });
 
-// Change the condition of a service request.
-app.put('/api/service/:sid/:wid', (req, res) => {
+// Change the WID of a service request.
+app.put('/api/service/:sid/set/:wid', (req, res) => {
   const { sid, wid } = req.params;
-  console.log(sid + ' ' + condition);
+  console.log(sid + ' ' + wid);
   if (!sid || !wid) {
-    return res.status(400).json({ error: 'Missing service ID or new status' });
+    return res.status(400).json({ error: 'Missing service ID or WID' });
   }
 
   const db_query = `
@@ -345,7 +345,7 @@ app.put('/api/service/:sid/:wid', (req, res) => {
       return res.status(404).json({ error: 'Not found.' });
     }
 
-    res.json({ message: 'Job assigned to ${wid}.', wid });
+    res.json({ message: "Job assigned to ${wid}.", wid });
   });
 });
 
