@@ -617,4 +617,53 @@ function sqlDate(){
   return formattedDate;
 };
 
+// Get all fridges
+app.get('/api/fridges', (req, res) => {
+  db.query('SELECT * FROM `Fridge_Tracker`', (err, rows) => {
+    if (err) {
+      console.error('Error fetching fridges:', err);
+      return res.status(500).json({ error: err });
+    }
+    console.log(`Fetched ${rows.length} fridges`);
+    res.json(rows);
+  });
+});
+
+// Get fridges by school
+app.get('/api/fridges/school/:school_id', (req, res) => {
+  const { school_id } = req.params;
+  
+  db.query(
+    'SELECT * FROM `Fridge_Tracker` WHERE `School` = ?',
+    [school_id],
+    (err, rows) => {
+      if (err) {
+        console.error('Error fetching fridges by school:', err);
+        return res.status(500).json({ error: err });
+      }
+      console.log(`Fetched ${rows.length} fridges for school ${school_id}`);
+      res.json(rows);
+    }
+  );
+});
+
+// Get fridge by ID
+app.get('/api/fridge/:fid', (req, res) => {
+  const { fid } = req.params;
+  
+  db.query(
+    'SELECT * FROM `Fridge_Tracker` WHERE `FID` = ?',
+    [fid],
+    (err, rows) => {
+      if (err) {
+        console.error('Error fetching fridge:', err);
+        return res.status(500).json({ error: err });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Fridge not found' });
+      }
+      res.json(rows[0]);
+    }
+  );
+});
 app.listen(5000, () => console.log('Server running on port 5000'));
