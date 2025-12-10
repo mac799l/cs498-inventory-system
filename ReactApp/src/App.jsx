@@ -1127,7 +1127,7 @@ function LiaisonDashboard() {
   try {
 
     const workerID = parseInt(WID, 10);
-    const res = await fetch(`http://localhost:5000/api/services/${SID}/${workerID}`, {
+    const res = await fetch(`http://localhost:5000/api/service/${SID}/${workerID}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
     });

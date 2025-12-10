@@ -321,6 +321,34 @@ app.put('/api/service/:sid/:condition', (req, res) => {
   });
 });
 
+// Change the condition of a service request.
+app.put('/api/service/:sid/:wid', (req, res) => {
+  const { sid, wid } = req.params;
+  console.log(sid + ' ' + condition);
+  if (!sid || !wid) {
+    return res.status(400).json({ error: 'Missing service ID or new status' });
+  }
+
+  const db_query = `
+    UPDATE \`Service\`
+    SET \`WID\` = ?
+    WHERE \`SID\` = ?
+  `;
+
+  db.query(db_query, [wid, sid], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Not found.' });
+    }
+
+    res.json({ message: 'Job assigned to ${wid}.', wid });
+  });
+});
+
 
 // --------- Post statements --------- //
 
