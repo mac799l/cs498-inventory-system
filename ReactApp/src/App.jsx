@@ -1358,37 +1358,16 @@ function WorkerDashboard() {
 
 
 
-function LiaisonDashboard() {
+function WorkerDashboard() {
   const { user } = useContext(UserContext);
-  const [view, setView] = useState("main"); 
-  const [requests, setRequests] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState('main');
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [workers, setWorkers] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("All"); // NEW: Filter state
-  const [selectedWorkers, setSelectedWorkers] = useState({});
-  
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    );
-  }
-  
-  const SCHOOLS = {
-    1001: "University of Kentucky",
-    1002: "University of Louisville",
-    1003: "Western Kentucky University",
-    1004: "Eastern Kentucky University"
-  }
-  
-  const campusID = user["School ID"];
-  const schoolName = SCHOOLS[campusID];
-  
-  // main = card view, schools = schools submenu
+  const [userMap, setUserMap] = useState({});
+
   useEffect(() => {
-    const loadData = async() => {
+    const loadRequests = async () => {
       setLoading(true);
       setError(null);
       try {
@@ -1396,172 +1375,238 @@ function LiaisonDashboard() {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
-        if (!res.ok) throw new Error('Failed to fetch request data');
+
+        if (!res.ok) throw new Error('Failed to fetch service requests');
         const data = await res.json();
-        const filteredData = data?.filter(req => req.SNO === campusID) || [];
+
         const uniqueUIDs = [...new Set(data.map((req) => req.UID))];
-        
-        // Fetch all users, but don't fail the whole thing if one is missing
+
+        // Fetch user profiles
         const userPromises = uniqueUIDs.map((uid) =>
           fetch(`http://localhost:5000/api/user/${uid}`)
-            .then((r) => {
-              if (!r.ok) {
-                console.warn(`User not found for UID: ${uid} (${r.status})`);
-                return null; // Mark as missing instead of throwing
-              }
-              return r.json();
-            })
-            .catch((err) => {
-              console.warn(`Failed to fetch user ${uid}:`, err);
-              return null;
-            })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
         );
-        
-        // Fetch workers
-        const workersRes = await fetch('http://localhost:5000/api/users/workers');
-        if (!workersRes.ok) throw new Error('Failed to fetch workers');
-        const workerData = await workersRes.json();
-        setWorkers(workerData);
-        console.log('Workers:', workerData);
-        
-        const userResults = await Promise.allSettled(userPromises);
-        
-        console.log("User results:");
-        console.log(userResults);
-        
-        // Extract successfully fetched users
+
+        // Fetch current FID ownership
+        const trackerPromises = uniqueUIDs.map((uid) =>
+          fetch(`http://localhost:5000/api/fridge_tracker/owner/${uid}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
+        );
+
+        const [userResults, trackerResults] = await Promise.all([
+          Promise.allSettled(userPromises),
+          Promise.allSettled(trackerPromises),
+        ]);
+
+        // Build user map
         const successfulUsers = userResults
-          .filter((r) => r.status === "fulfilled" && r.value !== null)
-          .map((r) => r.value[0]);
+          .filter((r) => r.status === 'fulfilled' && r.value)
+          .map((r) => (Array.isArray(r.value) ? r.value[0] : r.value));
+
         const userMap = Object.fromEntries(
           successfulUsers.map((u) => [u.UID, u])
         );
-        
-        console.log("Successful users:");
-        console.log(successfulUsers);
-        
-        // Enrich requests with location
-        const enriched = filteredData.map((req) => {
-          const userData = userMap[req.UID];
-          const location = userData?.Dorm && userData?.Room
+
+        // Build fridge ownership map
+        const fridgeMap = {};
+        trackerResults.forEach((result, index) => {
+          const uid = uniqueUIDs[index];
+          if (result.status === 'fulfilled' && result.value) {
+            const data = Array.isArray(result.value) ? result.value[0] : result.value;
+            fridgeMap[uid] = data?.FID || null;
+          } else {
+            fridgeMap[uid] = null;
+          }
+        });
+
+        setUserMap(userMap);
+
+        const enriched = data.map((req) => {
+          const userData = userMap[req.UID] || {};
+          const location = userData.Dorm && userData.Room
             ? `${userData.Dorm} ${userData.Room}`
             : 'Location N/A';
-          return { ...req, location };
+
+          const currentFID = fridgeMap[req.UID] || null;
+
+          return {
+            ...req,
+            location,
+            FID: currentFID,
+            tempFID: '',
+            userData,
+          };
         });
-        
-        console.log("enriched:");
-        console.log(enriched);
+
         setRequests(enriched);
-        console.log(enriched);
       } catch (err) {
-        console.error('Error loading service requests:', err);
+        console.error('Error loading requests:', err);
         setError('Failed to load requests. Please try again.');
       } finally {
         setLoading(false);
       }
     };
-    loadData();
+
+    loadRequests();
   }, []);
-  
-  useEffect(() => {
-    console.log('Requests updated:', requests)
-  }, [requests])
-  
-  
-  const filteredRequests = useMemo(() => {
-    if (!requests) return [];
-    if (statusFilter === "All") {
-      return requests;
+
+  // Toggle Clean/Dirty
+  const changeCondition = async (id, currentCondition) => {
+    const newCondition = currentCondition === 'Clean' ? 'Dirty' : 'Clean';
+    if (!window.confirm(`Mark fridge as '${newCondition}'?`)) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/service/${id}/${newCondition}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ condition: newCondition }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update condition');
+
+      setRequests((prev) =>
+        prev.map((r) => (r.SID === id ? { ...r, Condition: newCondition } : r))
+      );
+    } catch (err) {
+      alert('Failed to update condition.');
     }
-    return requests.filter(req => req["Status"] === statusFilter);
-  }, [statusFilter, requests]);
-  
-  /* ============================================================
-     AGGREGATE CALCULATIONS (using filtered data)
-     ============================================================ */
-  const countsByType = useMemo(() => {
-    if (!filteredRequests) { return {} }
-    const out = {};
-    filteredRequests.forEach(j => { 
-      const type = j["Type of Service"]
-      out[type] = (out[type] || 0) + 1; 
-    });
-    return out;
-  }, [filteredRequests]);
-  
-  const countsByStatus = useMemo(() => {
-    if (!filteredRequests) { return {} }
-    const out = {};
-    filteredRequests.forEach(j => { 
-      const status = j["Status"]
-      out[status] = (out[status] || 0) + 1; 
-    });
-    return out;
-  }, [filteredRequests]);
+  };
 
-async function updateWorkers(SID, WID) {
-  try {
-    const workerID = parseInt(WID, 10);
+  // Clear ownership when pickup is completed
+  const clearFridgeOwnership = async (fid, uid) => {
+    if (!fid) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/update/fridge_tracker/fid/${fid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Owner: null,
+          School: null,
+          Location: "Warehouse",
+          Moved: new Date().toISOString(),
+          Room: null,
+          Status: "Dirty",
+          uid: uid
+        }),
+      });
 
-    const res = await fetch(`http://localhost:5000/api/service/${SID}/setwid/${workerID}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-    });
+      if (!res.ok) throw new Error('Failed to clear fridge ownership');
+      console.log('Fridge ownership cleared (pickup completed)');
+    } catch (err) {
+      console.error(err);
+      alert('Warning: Pickup completed, but fridge was not removed from tracking.');
+    }
+  };
 
-    if (!res.ok) throw new Error("Failed to update worker");
+  // Main status toggle
+  const changeStatus = async (req) => {
+    const isPickup = req['Type of Service']?.toLowerCase().includes('pickup');
+    const isDelivery = req['Type of Service']?.toLowerCase().includes('delivery');
+    const newStatus = req.Status === 'Completed' ? 'In Progress' : 'Completed';
 
-  
-    const newWorker = workers.find(w => w.UID === workerID);
+    if (!window.confirm(`Mark this job as '${newStatus}'?`)) return;
 
+    let fidToUse = req.FID;
+
+    // Force FID entry only when completing a DELIVERY
+    if (newStatus === 'Completed' && isDelivery) {
+      const inputFID = (req.tempFID || '').trim();
+      if (!inputFID) {
+        alert('Please enter the FID of the fridge you delivered.');
+        return;
+      }
+      fidToUse = inputFID;
+    }
+
+    // Update service request status
+    try {
+      const res = await fetch(`http://localhost:5000/api/service/${req.SID}/${newStatus}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+    } catch (err) {
+      alert('Failed to update job status.');
+      return;
+    }
+
+    // If pickup completed, remove from fridge_tracker
+    if (newStatus === 'Completed' && isPickup && req.FID) {
+      await clearFridgeOwnership(req.FID, req.UID);
+    }
+
+    // Log movement in tracking table
+    if (fidToUse || req.FID) {
+      const fidForTracking = fidToUse || req.FID;
+
+      // Only update tracker if we're completing a delivery OR pickup
+      if (newStatus === 'Completed' && (isDelivery || isPickup)) {
+        const studentInfo = userMap[req.UID] || {};
+
+        const payload = {
+          // Only set Owner for delivery; clear it for pickup; leave unchanged for others
+          Owner: isDelivery ? req.UID : isPickup ? null : undefined,
+          School: isDelivery ? req.SNO : isPickup ? null : undefined,
+          Location: isDelivery ? studentInfo.Dorm : isPickup ? null : undefined,
+          Room: isDelivery ? studentInfo.Room : isPickup ? null : undefined,
+          Moved: new Date().toISOString(),
+          Status: req.Condition || "Dirty",
+        
+        };
+
+        // Remove undefined fields to prevent accidental overwrites
+        Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
+        try {
+          const res = await fetch(`http://localhost:5000/api/update/fridge_tracker/fid/${fidForTracking}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error('Failed to update tracking');
+        } catch (err) {
+          console.error(err);
+          alert('Job completed, but fridge tracking update failed.');
+        }
+      }
+    }
+
+    // Update UI
     setRequests((prev) =>
       prev.map((r) =>
-        r.SID === SID
+        r.SID === req.SID
           ? {
               ...r,
-              WID: workerID,                       
-              workerName: newWorker                
+              Status: newStatus,
+              FID: newStatus === 'Completed' && isDelivery ? fidToUse : r.FID,
+              tempFID: '',
             }
           : r
       )
     );
+  };
 
-    alert("Worker assigned successfully!");
-  } catch (err) {
-    console.error("Failed to update:", err);
-    alert("Failed to assign worker.");
-  }
-}
-  
-  /* ============================================================
-     MAIN DASHBOARD VIEW
-     ============================================================ */
-  if (view === "main") {
+  // MAIN VIEW
+  if (view === 'main') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
         <div className="px-6 py-10 sm:pl-12">
-          <h2 className="text-4xl font-bold text-purple-700 mb-6">
-            Liaison Dashboard
+          <h2 className="text-4xl font-bold text-green-700 mb-6">Worker Dashboard</h2>
+          <h2 className="text-3xl font-bold mb-8 text-green-800">
+            Hello {user?.['First Name'] || 'Worker'}
           </h2>
-          <h2 className="text-3xl font-bold mb-8 text-purple-800">
-            Hello {user["First Name"]}
-          </h2>
-          <h2 className="text-2xl font-bold mb-8 text-black-800">
-            {schoolName}
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Manage school metrics and worker activity.
-          </p>
+          <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 max-w-5xl">
             <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
-              <h3 className="text-2xl font-semibold text-purple-700 mb-3">
-                Schools Dashboard
-              </h3>
-              <p className="text-gray-600 mb-5">
-                View maintenance requests, deadlines, and fridge assignments.
-              </p>
+              <h3 className="text-2xl font-semibold text-green-700 mb-3">Fridge Requests</h3>
+              <p className="text-gray-600 mb-5">View and complete assigned fridge-related tasks.</p>
               <button
-                onClick={() => setView("schools")}
-                className="px-5 py-2 !bg-purple-600 !text-white rounded-lg !hover:bg-purple-700 transition"
+                onClick={() => setView('requests')}
+                className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
                 Open
               </button>
@@ -1571,162 +1616,101 @@ async function updateWorkers(SID, WID) {
       </div>
     );
   }
-  
-  /* ============================================================
-     SCHOOLS DASHBOARD SUBMENU VIEW (WITH FILTER)
-     ============================================================ */
+
+  // REQUESTS TABLE VIEW
   return (
-    <div className="px-6 py-10 max-w-5xl mx-auto">
+    <div className="px-6 py-10 max-w-7xl mx-auto">
       <button
-        onClick={() => setView("main")}
-        className="mb-6 px-4 py-2 bg-purple-200 text-purple-800 rounded-lg hover:bg-purple-300 transition"
+        onClick={() => setView('main')}
+        className="mb-6 px-4 py-2 bg-green-200 text-green-800 rounded-lg hover:bg-green-300 transition"
       >
-        ← Back to Liaison Dashboard
+        Back to Worker Dashboard
       </button>
-      
-      <h1 className="text-4xl font-bold text-purple-700 mb-6">
-        Schools Dashboard
-      </h1>
-      <p className="text-gray-600 mb-4">
-        Overview of scheduled school jobs and completion status.
-      </p>
-      
-      <div className="mb-6 flex items-center gap-3">
-        <label htmlFor="statusFilter" className="font-semibold text-purple-700">
-          Filter by Status:
-        </label>
-        <select
-          id="statusFilter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <option value="All">All</option>
-          <option value="Completed">Completed</option>
-          <option value="In Progress">In Progress</option>
-        </select>
-        
-        {/* Show count of filtered results */}
-        <span className="text-gray-600">
-          ({filteredRequests.length} {filteredRequests.length === 1 ? 'request' : 'requests'})
-        </span>
-      </div>
-      
-      {/* LOADING/ERROR STATES */}
-      {loading && (
-        <div className="text-center py-8">
-          <p className="text-gray-600">Loading requests...</p>
-        </div>
-      )}
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          {error}
-        </div>
-      )}
-      
-      {/* TABLE */}
-      {!loading && !error && requests && (
+
+      <h1 className="text-4xl font-bold text-green-700 mb-6">Fridge Requests</h1>
+      <p className="text-gray-600 mb-8">Complete your assigned fridge-related jobs.</p>
+
+      {error && <p className="text-red-600 mb-4">{error}</p>}
+
+      {loading ? (
+        <p className="text-gray-600">Loading requests...</p>
+      ) : requests.length === 0 ? (
+        <p className="text-gray-600">No pending requests.</p>
+      ) : (
         <div className="overflow-x-auto bg-white rounded-2xl shadow-md border">
           <table className="w-full text-left">
-            <thead className="bg-purple-100">
+            <thead className="bg-green-100">
               <tr>
-                <th className="px-4 py-3 font-semibold text-purple-800">Job Type</th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Job ID</th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Building</th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Deadline</th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Current Worker</th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Workers</th>
-                <th className="px-4 py-3 font-semibold text-purple-800"></th>
-                <th className="px-4 py-3 font-semibold text-purple-800">Status</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Job Type</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Date</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Location</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Notes</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Status</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Condition</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Current FID</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRequests.length > 0 ? (
-                filteredRequests.map(r => (
-                  <tr key={r["SID"]} className="border-t">
-                    <td className="px-4 py-3">{r["Type of Service"]}</td>
-                    <td className="px-4 py-3">{r["SID"]}</td>
-                    <td className="px-4 py-3">{r["location"]}</td>
-                    <td className="px-4 py-3">{r["Deadline Date"] ? new Date(r['Deadline Date']).toLocaleDateString()
-                      : 'N/A'}</td>
-                    <td className="px-4 py-3">
-                    {(() => {
-                      const worker = workers?.find(w => w.UID === r.WID);
-                      return worker ? `${worker["First Name"]} ${worker["Last Name"]}` : "Unassigned";
-                    })()}
+              {requests
+                .filter((req) => req.WID === user.UID)
+                .map((req) => (
+                  <tr key={req.SID} className="border-t hover:bg-gray-50">
+                    <td className="px-6 py-4">{req['Type of Service'] || 'N/A'}</td>
+                    <td className="px-6 py-4">
+                      {req['Deadline Date']
+                        ? new Date(req['Deadline Date']).toLocaleDateString()
+                        : 'N/A'}
                     </td>
-                    <td className="px-4 py-3">
-                      <select className="px-4 py-2 border rounded-lg" 
-                      value={selectedWorkers[r.SID || r.WID]} 
-                      onChange={(e) => setSelectedWorkers(prev => ({         
-                      ...prev, [r.SID]: e.target.value}))}> 
-                        <option value="">Select a worker</option>
-                        {workers && workers.map(worker => (
-                          <option key={worker.UID} value={worker.UID}>
-                            {worker["First Name"]} {worker["Last Name"]}
-                          </option>
-                        ))}
-                      </select>
+                    <td className="px-6 py-4">{req.location}</td>
+                    <td className="px-6 py-4">{req.Notes || '—'}</td>
+                    <td className="px-6 py-4 font-medium">
+                      <span className={req.Status === 'Completed' ? 'text-green-600' : 'text-orange-600'}>
+                        {req.Status || 'Pending'}
+                      </span>
                     </td>
-                    <td>
-                      <button className="px-4 py-2 bg-blue-400 text-white rounded-lg hover:bg-blue-700 transition-colors" 
-                        onClick={() => updateWorkers(r["SID"], selectedWorkers[r.SID])}
-                        disabled={!selectedWorkers[r.SID]}>Save</button>
+                    <td className="px-6 py-4">{req.Condition || '—'}</td>
+                    <td className="px-6 py-4 font-mono">
+                      {req.FID || '—'}
                     </td>
-                    <td
-                      className={`px-4 py-3 font-semibold ${
-                        r["Status"] === "Completed"
-                          ? "text-green-600"
-                          : r["Status"] === "In Progress"
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {r["Status"]}
+                    <td className="px-6 py-4 space-x-2">
+                      {/* FID Input - Delivery only*/}
+                      <input
+                        type="text"
+                        placeholder="FID"
+                        className="border rounded px-2 py-1 w-28 text-sm"
+                        value={req.tempFID || ''}
+                        onChange={(e) =>
+                          setRequests((prev) =>
+                            prev.map((r) =>
+                              r.SID === req.SID ? { ...r, tempFID: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+
+                      <button
+                        onClick={() => changeStatus(req)}
+                        className={`px-4 py-2 rounded text-white font-medium transition ${
+                          req.Status === 'Completed'
+                            ? 'bg-gray-500 hover:bg-gray-600'
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {req.Status === 'Completed' ? 'Re-open' : 'Complete'}
+                      </button>
+
+                      <button
+                        onClick={() => changeCondition(req.SID, req.Condition)}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition"
+                      >
+                        {req.Condition === 'Clean' ? 'Mark Dirty' : 'Mark Clean'}
+                      </button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                    No requests found with status "{statusFilter}"
-                  </td>
-                </tr>
-              )}
+                ))}
             </tbody>
           </table>
-        </div>
-      )}
-      
-      {/* AGGREGATES */}
-      {!loading && !error && requests && (
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-6 bg-white rounded-2xl shadow border">
-            <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Type</h2>
-            {Object.keys(countsByType).length > 0 ? (
-              Object.entries(countsByType).map(([type, count]) => (
-                <p key={type} className="text-gray-700">
-                  {type}: <span className="font-bold">{count}</span>
-                </p>
-              ))
-            ) : (
-              <p className="text-gray-500">No data available</p>
-            )}
-          </div>
-          
-          <div className="p-6 bg-white rounded-2xl shadow border">
-            <h2 className="text-2xl font-bold text-purple-700 mb-4">Jobs by Status</h2>
-            {Object.keys(countsByStatus).length > 0 ? (
-              Object.entries(countsByStatus).map(([status, count]) => (
-                <p key={status} className="text-gray-700">
-                  {status}: <span className="font-bold">{count}</span>
-                </p>
-              ))
-            ) : (
-              <p className="text-gray-500">No data available</p>
-            )}
-          </div>
         </div>
       )}
     </div>
