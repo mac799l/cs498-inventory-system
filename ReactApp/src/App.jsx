@@ -1,5 +1,10 @@
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, createContext, useContext, useMemo } from "react";
+import {
+  TruckIcon,
+  WrenchScrewdriverIcon,
+  InboxIcon,
+} from "@heroicons/react/24/outline";
 
 const UserContext = createContext();
 
@@ -386,6 +391,332 @@ function StudentDashboard() {
   const [preferredTimes, setPreferredTimes] = useState({});
   const [notes, setNotes] = useState("");
 
+  // Fridge status
+  const [hasFridge, setHasFridge] = useState(null); // null = loading
+  const [fridgeCheckError, setFridgeCheckError] = useState(false);
+
+  // Check if student has a fridge assigned
+  useEffect(() => {
+    const checkFridgeAssignment = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/student/has-fridge?uid=${user.UID}`
+        );
+        const data = await response.json();
+
+        setHasFridge(data.has_fridge === true);
+      } catch (err) {
+        console.error("Failed to check fridge assignment:", err);
+        setFridgeCheckError(true);
+        setHasFridge(false);
+      }
+    };
+
+    if (user?.UID) {
+      checkFridgeAssignment();
+    }
+  }, [user?.UID]);
+
+  const handleServiceClick = (serviceName) => {
+    const requiresFridge = serviceName === "Pickup" || serviceName === "Maintenance";
+
+    if (requiresFridge && hasFridge === false) {
+      alert(
+        `You cannot request ${serviceName} because you do not have a fridge assigned.\n\n` +
+          "Please request a Delivery first or contact Housing Services."
+      );
+      return;
+    }
+
+    if (hasFridge === null) {
+      alert("Checking your fridge assignment... Please try again in a moment.");
+      return;
+    }
+
+    if (fridgeCheckError) {
+      alert("Unable to verify fridge status. Please refresh the page.");
+      return;
+    }
+
+    setActiveForm(serviceName);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const requiresFridge = activeForm === "Pickup" || activeForm === "Maintenance";
+    if (requiresFridge && !hasFridge) {
+      alert("Request blocked: You do not have an assigned fridge.");
+      return;
+    }
+
+    const formattedTimes = {};
+    for (const [day, info] of Object.entries(preferredTimes)) {
+      if (info.selected) {
+        formattedTimes[day] = [info.start || "", info.end || ""];
+      }
+    }
+
+    const requestData = {
+      uid: user.UID,
+      sno: user["School ID"],
+      service_type: activeForm,
+      request_date: new Date().toISOString().split("T")[0],
+      service_date: serviceDate || new Date().toISOString().split("T")[0],
+      deadline_date: deadlineDate || null,
+      condition: activeForm === "Pickup" ? condition : null,
+      preferred_times: Object.keys(formattedTimes).length > 0 ? JSON.stringify(formattedTimes) : null,
+      notes: notes || null,
+    };
+
+    fetch("http://localhost:5000/api/insert/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestData),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success || data.message?.includes("success")) {
+          alert(`Your ${activeForm} request has been submitted successfully!`);
+          resetForm();
+          setActiveForm(null);
+        } else {
+          throw new Error(data.message || "Request failed");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Failed to submit request. Please try again later.");
+      });
+  };
+
+  const resetForm = () => {
+    setServiceDate("");
+    setDeadlineDate("");
+    setCondition("Clean");
+    setPreferredTimes({});
+    setNotes("");
+  };
+
+  const handleCancel = () => {
+    setActiveForm(null);
+    resetForm();
+  };
+
+  // Loading state
+  if (hasFridge === null) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-xl text-gray-600">Loading your fridge status...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+      <h1 className="text-3xl font-bold mb-2 text-blue-800">Student Dashboard</h1>
+      <h2 className="text-2xl mb-8 text-blue-900">Hello {user["First Name"]}</h2>
+
+      {/* Warning Banner */}
+      {hasFridge === false && (
+        <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-800 p-4 rounded mb-8 max-w-2xl">
+          <p className="font-bold">No Fridge Assigned</p>
+          <p className="text-sm">
+            You cannot request Pickup or Maintenance until a fridge is delivered.
+            You can still request a <strong>Delivery</strong>.
+          </p>
+        </div>
+      )}
+
+      {/* Service Selection Cards */}
+      {!activeForm && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full max-w-5xl">
+          {[
+            { name: "Delivery",    Icon: TruckIcon,              description: "Request fridge delivery" },
+            { name: "Pickup",      Icon: InboxIcon,              description: "Schedule fridge pickup" },
+            { name: "Maintenance", Icon: WrenchScrewdriverIcon,  description: "Report a fridge issue" },
+          ].map((service) => {
+            const requiresFridge = service.name !== "Delivery";
+            const isDisabled = requiresFridge && hasFridge === false;
+
+            return (
+              <div
+                key={service.name}
+                onClick={() => !isDisabled && handleServiceClick(service.name)}
+                className={`relative bg-white rounded-2xl p-10 shadow-xl transition-all text-center
+                  ${isDisabled
+                    ? "opacity-60 cursor-not-allowed grayscale"
+                    : "hover:scale-105 hover:shadow-2xl cursor-pointer border-2 border-transparent hover:border-blue-300"
+                  }`}
+              >
+                <service.Icon className="w-20 h-20 mx-auto mb-6 text-blue-600" />
+                <h3 className="text-2xl font-bold text-blue-800 mb-2">{service.name}</h3>
+                <p className="text-gray-600">{service.description}</p>
+
+                {isDisabled && (
+                  <div className="mt-4 p-2 bg-red-100 rounded text-red-700 text-sm font-medium">
+                    Requires assigned fridge
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Request Form - Show for Delivery OR if user has fridge */}
+      {activeForm && (activeForm === "Delivery" || hasFridge) && (
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-2xl bg-white mt-12 p-8 rounded-2xl shadow-2xl space-y-6"
+        >
+          <h2 className="text-3xl font-bold text-blue-700 text-center mb-6">
+            {activeForm} Request
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">Service Type</label>
+              <input
+                type="text"
+                value={activeForm}
+                readOnly
+                className="w-full px-4 py-3 border rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">Request Date</label>
+              <input
+                type="text"
+                value={new Date().toISOString().split("T")[0]}
+                readOnly
+                className="w-full px-4 py-3 border rounded-lg bg-gray-50 text-gray-700"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">
+              Deadline Date (Optional)
+            </label>
+            <input
+              type="date"
+              value={deadlineDate}
+              onChange={(e) => setDeadlineDate(e.target.value)}
+              className="w-full px-4 py-3 border rounded-lg"
+            />
+          </div>
+
+          {activeForm === "Pickup" && (
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">Fridge Condition</label>
+              <select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                className="w-full px-4 py-3 border rounded-lg"
+              >
+                <option value="Clean">Clean</option>
+                <option value="Dirty">Dirty (will incur cleaning fee)</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-gray-700 font-semibold mb-3">Preferred Times</label>
+            <div className="bg-gray-50 p-5 rounded-lg space-y-3">
+              {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(
+                (day) => (
+                  <div key={day} className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      id={day}
+                      checked={preferredTimes[day]?.selected || false}
+                      onChange={(e) =>
+                        setPreferredTimes({
+                          ...preferredTimes,
+                          [day]: { ...preferredTimes[day], selected: e.target.checked },
+                        })
+                      }
+                      className="w-5 h-5"
+                    />
+                    <label htmlFor={day} className="w-28 font-medium">{day}</label>
+                    {preferredTimes[day]?.selected && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="time"
+                          value={preferredTimes[day]?.start || ""}
+                          onChange={(e) =>
+                            setPreferredTimes({
+                              ...preferredTimes,
+                              [day]: { ...preferredTimes[day], start: e.target.value },
+                            })
+                          }
+                          className="px-3 py-2 border rounded"
+                        />
+                        <span className="text-gray-600">to</span>
+                        <input
+                          type="time"
+                          value={preferredTimes[day]?.end || ""}
+                          onChange={(e) =>
+                            setPreferredTimes({
+                              ...preferredTimes,
+                              [day]: { ...preferredTimes[day], end: e.target.value },
+                            })
+                          }
+                          className="px-3 py-2 border rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Additional Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={500}
+              rows={4}
+              placeholder="Any access instructions, special requests, or details..."
+              className="w-full px-4 py-3 border rounded-lg resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-6">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-8 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-lg"
+            >
+              Submit Request
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+
+function StudentDashboard2() {
+  const { user } = useContext(UserContext);
+  const [activeForm, setActiveForm] = useState(null);
+  const [serviceDate, setServiceDate] = useState("");
+  const [deadlineDate, setDeadlineDate] = useState("");
+  const [condition, setCondition] = useState("Clean");
+  const [preferredTimes, setPreferredTimes] = useState({});
+  const [notes, setNotes] = useState("");
+
   const handleCancel = () => {
     setActiveForm(null);
     resetForm();
@@ -672,8 +1003,7 @@ function WorkerDashboard() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-   const [userMap, setUserMap] = useState({});
+  const [userMap, setUserMap] = useState({});
 
   useEffect(() => {
     const loadRequests = async () => {
@@ -690,57 +1020,68 @@ function WorkerDashboard() {
 
         const uniqueUIDs = [...new Set(data.map((req) => req.UID))];
 
-        // Fetch all users, but don't fail the whole thing if one is missing
+        // Fetch user profiles
         const userPromises = uniqueUIDs.map((uid) =>
           fetch(`http://localhost:5000/api/user/${uid}`)
-            .then((r) => {
-              if (!r.ok) {
-                console.warn(`User not found for UID: ${uid} (${r.status})`);
-                return null; // Mark as missing instead of throwing
-              }
-              return r.json();
-            })
-            .catch((err) => {
-              console.warn(`Failed to fetch user ${uid}:`, err);
-              return null;
-            })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
         );
 
-        const userResults = await Promise.allSettled(userPromises);
-        
-        console.log("User results:");
-        console.log(userResults);
-        // Extract successfully fetched users
+        // Fetch current FID ownership
+        const trackerPromises = uniqueUIDs.map((uid) =>
+          fetch(`http://localhost:5000/api/fridge_tracker/owner/${uid}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
+        );
+
+        const [userResults, trackerResults] = await Promise.all([
+          Promise.allSettled(userPromises),
+          Promise.allSettled(trackerPromises),
+        ]);
+
+        // Build user map
         const successfulUsers = userResults
-          .filter((r) => r.status === "fulfilled" && r.value !== null)
-          .map((r) => r.value[0]);
+          .filter((r) => r.status === 'fulfilled' && r.value)
+          .map((r) => (Array.isArray(r.value) ? r.value[0] : r.value));
 
-
-        const mappedUsers = Object.fromEntries(
+        const userMap = Object.fromEntries(
           successfulUsers.map((u) => [u.UID, u])
         );
 
-        setUserMap(mappedUsers);
+        // Build fridge ownership map
+        const fridgeMap = {};
+        trackerResults.forEach((result, index) => {
+          const uid = uniqueUIDs[index];
+          if (result.status === 'fulfilled' && result.value) {
+            const data = Array.isArray(result.value) ? result.value[0] : result.value;
+            fridgeMap[uid] = data?.FID || null;
+          } else {
+            fridgeMap[uid] = null;
+          }
+        });
 
-        console.log("Successful users:");
-        console.log(successfulUsers);
+        setUserMap(userMap);
 
-        // Enrich requests with location
         const enriched = data.map((req) => {
-          const userData = mappedUsers[req.UID];
-          const location = userData?.Dorm && userData?.Room
+          const userData = userMap[req.UID] || {};
+          const location = userData.Dorm && userData.Room
             ? `${userData.Dorm} ${userData.Room}`
             : 'Location N/A';
-          return { ...req, location };
+
+          const currentFID = fridgeMap[req.UID] || null;
+
+          return {
+            ...req,
+            location,
+            FID: currentFID,
+            tempFID: '',
+            userData,
+          };
         });
-        
-        console.log("enriched:");
-        console.log(enriched);
 
         setRequests(enriched);
-        console.log(enriched);
       } catch (err) {
-        console.error('Error loading service requests:', err);
+        console.error('Error loading requests:', err);
         setError('Failed to load requests. Please try again.');
       } finally {
         setLoading(false);
@@ -750,173 +1091,183 @@ function WorkerDashboard() {
     loadRequests();
   }, []);
 
+  // Toggle Clean/Dirty
+  const changeCondition = async (id, currentCondition) => {
+    const newCondition = currentCondition === 'Clean' ? 'Dirty' : 'Clean';
+    if (!window.confirm(`Mark fridge as '${newCondition}'?`)) return;
 
-const changeCondition = async (id, condition) => {
-  if (condition == 'Clean'){
-    condition = 'Dirty';
-  }
-  else{
-    condition = 'Clean';
-  }
-  
-  if (!window.confirm(`Mark this fridge as '${condition}'?`)) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/service/${id}/${newCondition}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ condition: newCondition }),
+      });
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/service/${id}/${condition}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ condition }),
-    });
+      if (!res.ok) throw new Error('Failed to update condition');
 
-    if (!res.ok) throw new Error("Failed to update condition");
+      setRequests((prev) =>
+        prev.map((r) => (r.SID === id ? { ...r, Condition: newCondition } : r))
+      );
+    } catch (err) {
+      alert('Failed to update condition.');
+    }
+  };
 
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.SID === id ? { ...r, Condition: condition } : r
-      )
-    );
+  // Clear ownership when pickup is completed
+  const clearFridgeOwnership = async (fid, uid) => {
+    if (!fid) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/update/fridge_tracker/fid/${fid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Owner: null,
+          School: null,
+          Location: "Warehouse",
+          Moved: new Date().toISOString(),
+          Room: null,
+          Status: "Dirty",
+          uid: uid
+        }),
+      });
 
-  } catch (err) {
-    console.error("Failed to update:", err);
-    alert("Failed to update job status.");
-  }
-};
+      if (!res.ok) throw new Error('Failed to clear fridge ownership');
+      console.log('Fridge ownership cleared (pickup completed)');
+    } catch (err) {
+      console.error(err);
+      alert('Warning: Pickup completed, but fridge was not removed from tracking.');
+    }
+  };
 
+  // Main status toggle
+  const changeStatus = async (req) => {
+    const isPickup = req['Type of Service']?.toLowerCase().includes('pickup');
+    const isDelivery = req['Type of Service']?.toLowerCase().includes('delivery');
+    const newStatus = req.Status === 'Completed' ? 'In Progress' : 'Completed';
 
-const changeStatus = async (id, status) => {
-  if (status == 'Completed'){
-    status = 'In Progress';
-  }
-  else{
-    status = 'Completed';
-  }
-  
-  if (!window.confirm(`Mark this job as '${status}'?`)) return;
+    if (!window.confirm(`Mark this job as '${newStatus}'?`)) return;
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/service/${id}/${status}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    let fidToUse = req.FID;
 
-    if (!res.ok) throw new Error("Failed to update status");
-
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.SID === id ? { ...r, Status: status } : r
-      )
-    );
-
-  } catch (err) {
-    console.error("Failed to update:", err);
-    alert("Failed to update job status.");
-  }
-
-  try {
-  // Find the exact service request being updated
-  const selectedRequest = requests.find((r) => r.SID === id);
-
-  if (!selectedRequest) {
-    console.warn("Could not find matching request to log fridge tracker record.");
-    return;
-  }
-
-  const studentInfo = userMap[selectedRequest.UID];
-
-  const res = await fetch(`http://localhost:5000/api/fridge_tracker/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      Owner: selectedRequest.UID,
-      School: selectedRequest.SNO,
-      Location: studentInfo?.Dorm,
-      Moved: new Date().toISOString(),
-      Room: studentInfo?.Room,
-      Status: selectedRequest.Condition
-    }),
-  });
-
-  if (!res.ok) throw new Error("Failed to update fridge_tracker");
-  console.log("Fridge tracker entry saved successfully");
-
-  } catch (err) {
-    console.error("Failed to update fridge tracker:", err);
-    alert("Failed to update fridge tracker status.");
-  }
-
-};
-
-  /* ============================================================
-     MAIN WORKER DASHBOARD VIEW
-     ============================================================ */
-  if (view === 'main') {
-    const cards = [
-      {
-        title: 'Fridge Request',
-        desc: 'View and complete assigned fridge-related tasks.',
-        action: () => setView('requests'),
+    // Force FID entry only when completing a DELIVERY
+    if (newStatus === 'Completed' && isDelivery) {
+      const inputFID = (req.tempFID || '').trim();
+      if (!inputFID) {
+        alert('Please enter the FID of the fridge you delivered.');
+        return;
       }
-    ];
+      fidToUse = inputFID;
+    }
 
+    // Update service request status
+    try {
+      const res = await fetch(`http://localhost:5000/api/service/${req.SID}/${newStatus}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+    } catch (err) {
+      alert('Failed to update job status.');
+      return;
+    }
+
+    // If pickup completed, remove from fridge_tracker
+    if (newStatus === 'Completed' && isPickup && req.FID) {
+      await clearFridgeOwnership(req.FID, req.UID);
+    }
+
+    // Log movement in tracking table
+    if (fidToUse || req.FID) {
+      const fidForTracking = fidToUse || req.FID;
+
+      // Only update tracker if we're completing a delivery OR pickup
+      if (newStatus === 'Completed' && (isDelivery || isPickup)) {
+        const studentInfo = userMap[req.UID] || {};
+
+        const payload = {
+          // Only set Owner for delivery; clear it for pickup; leave unchanged for others
+          Owner: isDelivery ? req.UID : isPickup ? null : undefined,
+          School: isDelivery ? req.SNO : isPickup ? null : undefined,
+          Location: isDelivery ? studentInfo.Dorm : isPickup ? null : undefined,
+          Room: isDelivery ? studentInfo.Room : isPickup ? null : undefined,
+          Moved: new Date().toISOString(),
+          Status: req.Condition || "Dirty",
+        
+        };
+
+        // Remove undefined fields to prevent accidental overwrites
+        Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
+        try {
+          const res = await fetch(`http://localhost:5000/api/update/fridge_tracker/fid/${fidForTracking}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error('Failed to update tracking');
+        } catch (err) {
+          console.error(err);
+          alert('Job completed, but fridge tracking update failed.');
+        }
+      }
+    }
+
+    // Update UI
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.SID === req.SID
+          ? {
+              ...r,
+              Status: newStatus,
+              FID: newStatus === 'Completed' && isDelivery ? fidToUse : r.FID,
+              tempFID: '',
+            }
+          : r
+      )
+    );
+  };
+
+  // MAIN VIEW
+  if (view === 'main') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-10">
         <div className="px-6 py-10 sm:pl-12">
-          <h2 className="text-4xl font-bold text-green-700 mb-6">
-            Worker Dashboard
-          </h2>
-
+          <h2 className="text-4xl font-bold text-green-700 mb-6">Worker Dashboard</h2>
           <h2 className="text-3xl font-bold mb-8 text-green-800">
             Hello {user?.['First Name'] || 'Worker'}
           </h2>
-
           <p className="text-gray-600 mb-8">Submit your logs and track tasks.</p>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 max-w-5xl">
-            {cards.map((card) => (
-              <div
-                key={card.title}
-                className="p-6 !bg-white !rounded-2xl !shadow-md border !hover:shadow-lg transition-all"
+            <div className="p-6 bg-white rounded-2xl shadow-md border hover:shadow-lg transition-all">
+              <h3 className="text-2xl font-semibold text-green-700 mb-3">Fridge Requests</h3>
+              <p className="text-gray-600 mb-5">View and complete assigned fridge-related tasks.</p>
+              <button
+                onClick={() => setView('requests')}
+                className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
-                <h3 className="text-2xl font-semibold text-green-700 mb-3">
-                  {card.title}
-                </h3>
-
-                <p className="text-gray-600 mb-5">{card.desc}</p>
-
-                <button
-                  onClick={card.action}
-                  className="px-5 py-2 !bg-green-600 !text-white !rounded-lg !hover:bg-green-700 !transition"
-                >
-                  Open
-                </button>
-              </div>
-            ))}
+                Open
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ============================================================
-     FRIDGE REQUEST TABLE SUBMENU VIEW
-     ============================================================ */
+  // REQUESTS TABLE VIEW
   return (
-    <div className="px-6 py-10 max-w-5xl mx-auto">
+    <div className="px-6 py-10 max-w-7xl mx-auto">
       <button
         onClick={() => setView('main')}
         className="mb-6 px-4 py-2 bg-green-200 text-green-800 rounded-lg hover:bg-green-300 transition"
       >
-        ← Back to Worker Dashboard
+        Back to Worker Dashboard
       </button>
 
-      <h1 className="text-4xl font-bold text-green-700 mb-6">
-        Fridge Requests
-      </h1>
-
-      <p className="text-gray-600 mb-8">
-        Complete your assigned fridge-related jobs.
-      </p>
+      <h1 className="text-4xl font-bold text-green-700 mb-6">Fridge Requests</h1>
+      <p className="text-gray-600 mb-8">Complete your assigned fridge-related jobs.</p>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
@@ -929,49 +1280,74 @@ const changeStatus = async (id, status) => {
           <table className="w-full text-left">
             <thead className="bg-green-100">
               <tr>
-                <th className="px-7 py-5 font-semibold text-green-800">Job Type</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Scheduled For</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Location</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Notes</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Status</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Condition</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Actions</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Job Type</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Date</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Location</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Notes</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Status</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Condition</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Current FID</th>
+                <th className="px-6 py-4 font-semibold text-green-800">Actions</th>
               </tr>
             </thead>
-
             <tbody>
               {requests
-              .filter((req) => req.Status !== "Completed")
-              .map((req) => (
-                <tr key={req.id} className="border-t">
-                  <td className="px-7 py-5">{req['Type of Service'] || 'N/A'}</td>
-                  <td className="px-7 py-5">
-                    {req['Service Date']
-                      ? new Date(req['Service Date']).toLocaleDateString()
-                      : 'N/A'}
-                  </td>
-                  <td className="px-7 py-5">{req.location}</td>
-                  <td className="px-7 py-5">{req.Notes || 'None'}</td>
-                  <td className="px-7 py-5">{req.Status || 'None'}</td>
-                  <td className="px-7 py-5">{req.Condition || 'None'}</td>
-                  <td className="px-7 py-5">
-                    <button
-                      onClick={() => changeStatus(req.SID, req.Status)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                    >
-                      Change Status
-                    </button>
-                  </td>
-                                    <td className="px-7 py-5">
-                    <button
-                      onClick={() => changeCondition(req.SID, req.Condition)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                    >
-                      Change Condition
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                .filter((req) => req.WID === user.UID)
+                .map((req) => (
+                  <tr key={req.SID} className="border-t hover:bg-gray-50">
+                    <td className="px-6 py-4">{req['Type of Service'] || 'N/A'}</td>
+                    <td className="px-6 py-4">
+                      {req['Deadline Date']
+                        ? new Date(req['Deadline Date']).toLocaleDateString()
+                        : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4">{req.location}</td>
+                    <td className="px-6 py-4">{req.Notes || '—'}</td>
+                    <td className="px-6 py-4 font-medium">
+                      <span className={req.Status === 'Completed' ? 'text-green-600' : 'text-orange-600'}>
+                        {req.Status || 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{req.Condition || '—'}</td>
+                    <td className="px-6 py-4 font-mono">
+                      {req.FID || '—'}
+                    </td>
+                    <td className="px-6 py-4 space-x-2">
+                      {/* FID Input - Delivery only*/}
+                      <input
+                        type="text"
+                        placeholder="FID"
+                        className="border rounded px-2 py-1 w-28 text-sm"
+                        value={req.tempFID || ''}
+                        onChange={(e) =>
+                          setRequests((prev) =>
+                            prev.map((r) =>
+                              r.SID === req.SID ? { ...r, tempFID: e.target.value } : r
+                            )
+                          )
+                        }
+                      />
+
+                      <button
+                        onClick={() => changeStatus(req)}
+                        className={`px-4 py-2 rounded text-white font-medium transition ${
+                          req.Status === 'Completed'
+                            ? 'bg-gray-500 hover:bg-gray-600'
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {req.Status === 'Completed' ? 'Re-open' : 'Complete'}
+                      </button>
+
+                      <button
+                        onClick={() => changeCondition(req.SID, req.Condition)}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition"
+                      >
+                        {req.Condition === 'Clean' ? 'Mark Dirty' : 'Mark Clean'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -1127,7 +1503,7 @@ async function updateWorkers(SID, WID) {
   try {
     const workerID = parseInt(WID, 10);
 
-    const res = await fetch(`http://localhost:5000/api/service/${SID}/set/${workerID}`, {
+    const res = await fetch(`http://localhost:5000/api/service/${SID}/setwid/${workerID}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
     });
