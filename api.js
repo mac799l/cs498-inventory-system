@@ -102,7 +102,6 @@ app.get('/api/user/:email/:pass', (req, res) => {
 
 
 // --------- Put statements --------- //
-
 // Update user attributes.
 app.put('/api/put/user/:uid', (req, res) => {
   const { uid } = req.params;
@@ -154,6 +153,46 @@ app.put('/api/put/user/:uid', (req, res) => {
       message: "User updated inserted successfully."
     });
   });
+});
+
+// Create a fridge tracker entry
+app.post('/api/fridge_tracker', (req, res) => {
+  const { Owner, School, Location, Room, Moved, Status} = req.body;
+
+  if (!Owner || !School || !Status) {
+    return res.status(400).json({
+      error: 'Missing required fields.'
+    });
+  }
+
+  const query = `
+    INSERT INTO \`fridge_tracker\`
+    (\`Owner\`, \`School\`, \`Location\`, \`Room\`, \`Moved\`, \`Status\`)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    query,
+    [
+      Owner,
+      School,
+      Location,
+      Room,
+      Moved || new Date().toISOString(),
+      Status,
+    ],
+    (err, result) => {
+      if (err) {
+        console.error('Database insert failed:', err);
+        return res.status(500).json({ error: 'Database insert failed' });
+      }
+
+      res.status(201).json({
+        message: 'Fridge tracker entry created successfully.',
+        trackerId: result.insertId
+      });
+    }
+  );
 });
 
 
