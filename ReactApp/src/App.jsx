@@ -696,7 +696,7 @@ function StudentDashboard() {
             </button>
             <button
               type="submit"
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-lg"
+              className="px-8 py-3 !bg-blue-600 !hover:bg-blue-700 !text-white font-semibold rounded-lg transition shadow-lg"
             >
               Submit Request
             </button>
@@ -954,7 +954,7 @@ function WorkerDashboard() {
               <p className="text-gray-600 mb-5">View and complete assigned fridge-related tasks.</p>
               <button
                 onClick={() => setView('requests')}
-                className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className="px-5 py-2 !bg-green-600 !text-white rounded-lg hover:bg-green-700 transition"
               >
                 Open
               </button>
@@ -1072,8 +1072,8 @@ function WorkerDashboard() {
                       onClick={() => changeStatus(req)}
                       className={`px-4 py-2 rounded text-white font-medium transition ${
                         req.Status === 'Completed'
-                          ? 'bg-gray-500 hover:bg-gray-600'
-                          : 'bg-green-600 hover:bg-green-700'
+                          ? '!bg-gray-500 hover:!bg-gray-600'
+                          : '!bg-green-600 hover:!bg-green-700'
                       }`}
                     >
                       {req.Status === 'Completed' ? 'Re-open' : 'Complete'}
@@ -1081,7 +1081,7 @@ function WorkerDashboard() {
 
                     <button
                       onClick={() => changeCondition(req.SID, req.Condition)}
-                      className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition"
+                      className="px-3 py-2 !bg-blue-600 !text-white text-sm rounded hover:bg-blue-700 transition"
                     >
                       {req.Condition === 'Clean' ? 'Mark Dirty' : 'Mark Clean'}
                     </button>
