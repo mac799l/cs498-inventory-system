@@ -3,6 +3,7 @@ const cors = require('cors');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const { cpuUsage } = require('process');
+const { useId } = require('react');
 
 const app = express();
 app.use(cors());
@@ -28,6 +29,29 @@ db.connect((err) => {
 
 // --------- Get statements --------- //
 
+
+app.get('/api/student/has-fridge', (req, res) => {
+  const { uid } = req.query;
+
+  if (!uid) {
+    return res.status(400).json({ has_fridge: false });
+  }
+
+  db.query(
+    'SELECT 1 FROM `Fridge_Tracker` WHERE `Owner` = ? LIMIT 1',
+    [uid],
+    (err, rows) => {
+      if (err) {
+        console.error('DB Error:', err);
+        return res.status(500).json({ has_fridge: false });
+      }
+      const hasFridge = rows.length > 0;
+      res.json({ has_fridge: hasFridge });
+    }
+  );
+});
+
+
 // Get all jobs.
 app.get('/api/service', (req, res) => {
 	db.query('SELECT * FROM \`Service\`', (err, rows) => {
@@ -46,6 +70,28 @@ app.get('/api/service/:type', (req, res) => {
 	});
 });
 
+
+app.get('/api/fridge_tracker/owner/:uid', (req, res) => {
+  const { uid } = req.params;
+
+  if (!uid) return res.status(400).json({ error: 'UID is required' });
+
+  db.query(
+    `SELECT FID, Owner, Location, Room, Status, Moved 
+     FROM \`Fridge_Tracker\` 
+     WHERE Owner = ? 
+     ORDER BY Moved DESC 
+     LIMIT 1`,
+    [uid],
+    (err, rows) => {
+      if (err) {
+        console.error('DB Error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(rows[0] || null);
+    }
+  );
+});
 
 // Get all users.
 app.get('/api/users', (req, res) => {
@@ -360,6 +406,117 @@ app.put('/api/service/:sid/:condition', (req, res) => {
   });
 });
 
+// Change the WID of a service request.
+app.put('/api/service/:sid/setwid/:wid', (req, res) => {
+  const { sid, wid } = req.params;
+  console.log(sid + ' ' + wid);
+  if (!sid || !wid) {
+    return res.status(400).json({ error: 'Missing service ID or WID' });
+  }
+
+  const db_query = `
+    UPDATE \`Service\`
+    SET \`WID\` = ?
+    WHERE \`SID\` = ?
+  `;
+
+  db.query(db_query, [wid, sid], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Not found.' });
+    }
+
+    res.json({ message: "Job assigned to ${wid}.", wid });
+  });
+});
+
+// Change the FID of a service request.
+app.put('/api/service/:sid/setfid/:fid', (req, res) => {
+  const { sid, fid } = req.params;
+  console.log(sid + ' ' + fid);
+  if (!sid || !fid) {
+    return res.status(400).json({ error: 'Missing service ID or FID' });
+  }
+
+  const db_query = `
+    UPDATE \`Service\`
+    SET \`FID\` = ?
+    WHERE \`SID\` = ?
+  `;
+
+  db.query(db_query, [wid, sid], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Not found.' });
+    }
+
+    res.json({ message: "Job assigned to ${wid}.", wid });
+  });
+});
+
+
+
+// This is the one your WorkerDashboard actually calls
+app.put('/api/update/fridge_tracker/fid/:fid', (req, res) => {
+  const { fid } = req.params;
+  const { Owner, School, Location, Room, Status } = req.body;
+
+  if (!fid) {
+    return res.status(400).json({ error: 'FID is required' });
+  }
+
+  const Moved = new Date().toISOString();
+
+  const updates = [];
+  const values = [];
+
+  if (Owner !== undefined) { updates.push('`Owner` = ?'); values.push(Owner); }
+  if (School !== undefined) { updates.push('`School` = ?'); values.push(School); }
+  if (Location !== undefined) { updates.push('`Location` = ?'); values.push(Location); }
+  if (Room !== undefined) { updates.push('`Room` = ?'); values.push(Room); }
+  if (Status !== undefined) { updates.push('`Status` = ?'); values.push(Status); }
+
+  updates.push('`Moved` = ?');
+  values.push(Moved);
+  values.push(fid);
+
+  const query = `
+    UPDATE \`Fridge_Tracker\`
+    SET ${updates.join(', ')}
+    WHERE \`FID\` = ?
+  `;
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error('Update fridge tracking failed:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    if (result.affectedRows === 0) {
+      console.log("404 Fridge FID not found")
+      return res.status(404).json({ error: 'Fridge FID not found' });
+    }
+    res.json({ message: 'Fridge tracking updated', FID: fid });
+  });
+});
+
+
+function getUser(uid) {
+  return new Promise((resolve, reject) => {
+    db.query('SELECT * FROM `Login` WHERE UID = ?', [uid], (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows[0] || null); // Return first row or null
+    });
+  });
+}
+
 
 // --------- Post statements --------- //
 
@@ -499,4 +656,53 @@ function sqlDate(){
   return formattedDate;
 };
 
+// Get all fridges
+app.get('/api/fridges', (req, res) => {
+  db.query('SELECT * FROM `Fridge_Tracker`', (err, rows) => {
+    if (err) {
+      console.error('Error fetching fridges:', err);
+      return res.status(500).json({ error: err });
+    }
+    console.log(`Fetched ${rows.length} fridges`);
+    res.json(rows);
+  });
+});
+
+// Get fridges by school
+app.get('/api/fridges/school/:school_id', (req, res) => {
+  const { school_id } = req.params;
+  
+  db.query(
+    'SELECT * FROM `Fridge_Tracker` WHERE `School` = ?',
+    [school_id],
+    (err, rows) => {
+      if (err) {
+        console.error('Error fetching fridges by school:', err);
+        return res.status(500).json({ error: err });
+      }
+      console.log(`Fetched ${rows.length} fridges for school ${school_id}`);
+      res.json(rows);
+    }
+  );
+});
+
+// Get fridge by ID
+app.get('/api/fridge/:fid', (req, res) => {
+  const { fid } = req.params;
+  
+  db.query(
+    'SELECT * FROM `Fridge_Tracker` WHERE `FID` = ?',
+    [fid],
+    (err, rows) => {
+      if (err) {
+        console.error('Error fetching fridge:', err);
+        return res.status(500).json({ error: err });
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Fridge not found' });
+      }
+      res.json(rows[0]);
+    }
+  );
+});
 app.listen(5000, () => console.log('Server running on port 5000'));
