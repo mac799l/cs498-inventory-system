@@ -935,7 +935,8 @@ const changeStatus = async (id, status) => {
                 <th className="px-7 py-5 font-semibold text-green-800">Notes</th>
                 <th className="px-7 py-5 font-semibold text-green-800">Status</th>
                 <th className="px-7 py-5 font-semibold text-green-800">Condition</th>
-                <th className="px-7 py-5 font-semibold text-green-800">Actions</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Update Status</th>
+                <th className="px-7 py-5 font-semibold text-green-800">Update Condition</th>
               </tr>
             </thead>
 
@@ -957,17 +958,17 @@ const changeStatus = async (id, status) => {
                   <td className="px-7 py-5">
                     <button
                       onClick={() => changeStatus(req.SID, req.Status)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                      className="px-4 py-2 !bg-green-600 !text-white rounded-lg hover:bg-green-700 transition"
                     >
-                      Change Status
+                      Update Status
                     </button>
                   </td>
                                     <td className="px-7 py-5">
                     <button
                       onClick={() => changeCondition(req.SID, req.Condition)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                      className="px-4 py-2 !bg-green-600 !text-white rounded-lg hover:bg-green-700 transition"
                     >
-                      Change Condition
+                      Update Condition
                     </button>
                   </td>
                 </tr>
@@ -1279,7 +1280,7 @@ function LiaisonDashboard() {
                       </select>
                     </td>
                     <td>
-                      <button className="px-4 py-2 bg-blue-400 text-white rounded-lg hover:bg-blue-700 transition-colors" 
+                      <button className="px-4 py-2 !bg-blue-400 !text-white rounded-lg hover:bg-blue-700 transition-colors" 
                         onClick={() => updateWorkers(r["SID"], selectedWorkers[r.SID])}
                         disabled={!selectedWorkers[r.SID]}>Save</button>
                     </td>
